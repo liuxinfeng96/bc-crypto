@@ -11,7 +11,7 @@
 
 package cipher
 
-import "crypto/internal/subtle"
+import "golang.org/bc-crypto/internal/subtle"
 
 type cbc struct {
 	b         Block

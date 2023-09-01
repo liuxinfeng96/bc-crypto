@@ -6,9 +6,10 @@ package aes
 
 import (
 	"crypto/cipher"
-	"crypto/internal/boring"
-	"crypto/internal/subtle"
 	"strconv"
+
+	"golang.org/bc-crypto/internal/boring"
+	"golang.org/bc-crypto/internal/subtle"
 )
 
 // The AES block size in bytes.

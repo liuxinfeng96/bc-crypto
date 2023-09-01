@@ -24,13 +24,14 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/elliptic"
-	"crypto/internal/boring"
-	"crypto/internal/boring/bbig"
-	"crypto/internal/randutil"
 	"crypto/sha512"
 	"errors"
 	"io"
 	"math/big"
+
+	"golang.org/bc-crypto/internal/boring"
+	"golang.org/bc-crypto/internal/boring/bbig"
+	"golang.org/bc-crypto/internal/randutil"
 
 	"golang.org/x/crypto/cryptobyte"
 	"golang.org/x/crypto/cryptobyte/asn1"

@@ -15,12 +15,13 @@ package ed25519
 import (
 	"bytes"
 	"crypto"
-	"crypto/internal/edwards25519"
 	cryptorand "crypto/rand"
 	"crypto/sha512"
 	"errors"
 	"io"
 	"strconv"
+
+	"golang.org/bc-crypto/internal/edwards25519"
 )
 
 const (

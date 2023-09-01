@@ -6,9 +6,10 @@ package des
 
 import (
 	"crypto/cipher"
-	"crypto/internal/subtle"
 	"encoding/binary"
 	"strconv"
+
+	"golang.org/bc-crypto/internal/subtle"
 )
 
 // The DES block size in bytes.

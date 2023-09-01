@@ -6,7 +6,7 @@
 
 package cipher
 
-import "crypto/internal/subtle"
+import "golang.org/bc-crypto/internal/subtle"
 
 type ofb struct {
 	b       Block

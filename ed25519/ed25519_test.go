@@ -9,12 +9,13 @@ import (
 	"bytes"
 	"compress/gzip"
 	"crypto"
-	"crypto/internal/boring"
 	"crypto/rand"
 	"encoding/hex"
 	"os"
 	"strings"
 	"testing"
+
+	"golang.org/bc-crypto/internal/boring"
 )
 
 type zeroReader struct{}

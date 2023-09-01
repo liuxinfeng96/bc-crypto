@@ -12,7 +12,7 @@
 
 package cipher
 
-import "crypto/internal/subtle"
+import "golang.org/bc-crypto/internal/subtle"
 
 type ctr struct {
 	b       Block
