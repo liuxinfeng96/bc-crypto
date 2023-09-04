@@ -7,7 +7,7 @@ package fiat_test
 import (
 	"testing"
 
-	"golang.org/bc-crypto/internal/nistec/fiat"
+	"github.com/LiuXinfeng96/bc-crypto/internal/nistec/fiat"
 )
 
 func BenchmarkMul(b *testing.B) {

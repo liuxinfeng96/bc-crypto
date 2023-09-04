@@ -8,7 +8,7 @@ import (
 	"errors"
 	"math/big"
 
-	"golang.org/bc-crypto/internal/nistec"
+	"github.com/LiuXinfeng96/bc-crypto/internal/nistec"
 )
 
 var p224 = &nistCurve[*nistec.P224Point]{

@@ -8,8 +8,8 @@ import (
 	"crypto/cipher"
 	"strconv"
 
-	"golang.org/bc-crypto/internal/boring"
-	"golang.org/bc-crypto/internal/subtle"
+	"github.com/LiuXinfeng96/bc-crypto/internal/boring"
+	"github.com/LiuXinfeng96/bc-crypto/internal/subtle"
 )
 
 // The AES block size in bytes.

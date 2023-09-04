@@ -14,7 +14,7 @@ package sha1
 import (
 	"hash"
 
-	"golang.org/bc-crypto/internal/boring"
+	"github.com/LiuXinfeng96/bc-crypto/internal/boring"
 )
 
 const boringEnabled = boring.Enabled

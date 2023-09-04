@@ -21,7 +21,7 @@ import (
 	"io"
 	"strconv"
 
-	"golang.org/bc-crypto/internal/edwards25519"
+	"github.com/LiuXinfeng96/bc-crypto/internal/edwards25519"
 )
 
 const (

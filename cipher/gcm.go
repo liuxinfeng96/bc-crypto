@@ -9,7 +9,7 @@ import (
 	"encoding/binary"
 	"errors"
 
-	subtleoverlap "golang.org/bc-crypto/internal/subtle"
+	subtleoverlap "github.com/LiuXinfeng96/bc-crypto/internal/subtle"
 )
 
 // AEAD is a cipher mode providing authenticated encryption with associated

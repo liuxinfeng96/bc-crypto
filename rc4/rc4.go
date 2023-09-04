@@ -12,7 +12,7 @@ package rc4
 import (
 	"strconv"
 
-	"golang.org/bc-crypto/internal/subtle"
+	"github.com/LiuXinfeng96/bc-crypto/internal/subtle"
 )
 
 // A Cipher is an instance of RC4 using a particular key.

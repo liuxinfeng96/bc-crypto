@@ -14,7 +14,7 @@ import (
 	"io"
 	"math/big"
 
-	"golang.org/bc-crypto/internal/boring"
+	"github.com/LiuXinfeng96/bc-crypto/internal/boring"
 )
 
 // Per RFC 8017, Section 9.1

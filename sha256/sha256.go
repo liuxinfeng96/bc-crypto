@@ -12,7 +12,7 @@ import (
 	"errors"
 	"hash"
 
-	"golang.org/bc-crypto/internal/boring"
+	"github.com/LiuXinfeng96/bc-crypto/internal/boring"
 )
 
 func init() {

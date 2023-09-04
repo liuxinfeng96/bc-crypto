@@ -11,7 +11,7 @@ import (
 	"crypto/subtle"
 	"errors"
 
-	subtleoverlap "golang.org/bc-crypto/internal/subtle"
+	subtleoverlap "github.com/LiuXinfeng96/bc-crypto/internal/subtle"
 )
 
 // The following functions are defined in gcm_*.s.

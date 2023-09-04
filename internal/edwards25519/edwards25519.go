@@ -7,7 +7,7 @@ package edwards25519
 import (
 	"errors"
 
-	"golang.org/bc-crypto/internal/edwards25519/field"
+	"github.com/LiuXinfeng96/bc-crypto/internal/edwards25519/field"
 )
 
 // Point types.

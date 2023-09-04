@@ -12,7 +12,7 @@ import (
 	"crypto/cipher"
 	"hash"
 
-	"golang.org/bc-crypto/internal/boring/sig"
+	"github.com/LiuXinfeng96/bc-crypto/internal/boring/sig"
 )
 
 const available = false

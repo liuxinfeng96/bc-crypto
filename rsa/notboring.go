@@ -6,7 +6,7 @@
 
 package rsa
 
-import "golang.org/bc-crypto/internal/boring"
+import "github.com/LiuXinfeng96/bc-crypto/internal/boring"
 
 func boringPublicKey(*PublicKey) (*boring.PublicKeyRSA, error) {
 	panic("boringcrypto: not available")

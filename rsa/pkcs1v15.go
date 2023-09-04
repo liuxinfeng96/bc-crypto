@@ -11,8 +11,8 @@ import (
 	"io"
 	"math/big"
 
-	"golang.org/bc-crypto/internal/boring"
-	"golang.org/bc-crypto/internal/randutil"
+	"github.com/LiuXinfeng96/bc-crypto/internal/boring"
+	"github.com/LiuXinfeng96/bc-crypto/internal/randutil"
 )
 
 // This file implements encryption and decryption using PKCS #1 v1.5 padding.

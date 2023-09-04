@@ -30,9 +30,9 @@ import (
 	"io"
 	"math/big"
 
-	"golang.org/bc-crypto/internal/boring"
-	"golang.org/bc-crypto/internal/boring/bbig"
-	"golang.org/bc-crypto/internal/randutil"
+	"github.com/LiuXinfeng96/bc-crypto/internal/boring"
+	"github.com/LiuXinfeng96/bc-crypto/internal/boring/bbig"
+	"github.com/LiuXinfeng96/bc-crypto/internal/randutil"
 
 	"golang.org/x/crypto/cryptobyte"
 	"golang.org/x/crypto/cryptobyte/asn1"

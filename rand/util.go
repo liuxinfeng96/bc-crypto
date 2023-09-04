@@ -9,7 +9,7 @@ import (
 	"io"
 	"math/big"
 
-	"golang.org/bc-crypto/internal/randutil"
+	"github.com/LiuXinfeng96/bc-crypto/internal/randutil"
 )
 
 // Prime returns a number of the given bit length that is prime with high probability.

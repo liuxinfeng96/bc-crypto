@@ -9,7 +9,7 @@ import (
 	"encoding/binary"
 	"strconv"
 
-	"golang.org/bc-crypto/internal/subtle"
+	"github.com/LiuXinfeng96/bc-crypto/internal/subtle"
 )
 
 // The DES block size in bytes.

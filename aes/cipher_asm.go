@@ -11,8 +11,8 @@ import (
 	"internal/cpu"
 	"internal/goarch"
 
-	"golang.org/bc-crypto/internal/boring"
-	"golang.org/bc-crypto/internal/subtle"
+	"github.com/LiuXinfeng96/bc-crypto/internal/boring"
+	"github.com/LiuXinfeng96/bc-crypto/internal/subtle"
 )
 
 // defined in asm_*.s

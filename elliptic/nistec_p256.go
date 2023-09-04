@@ -9,7 +9,7 @@ package elliptic
 import (
 	"math/big"
 
-	"golang.org/bc-crypto/internal/nistec"
+	"github.com/LiuXinfeng96/bc-crypto/internal/nistec"
 )
 
 func (c p256Curve) Inverse(k *big.Int) *big.Int {

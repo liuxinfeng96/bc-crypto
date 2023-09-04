@@ -25,7 +25,7 @@ import (
 	"crypto/subtle"
 	"hash"
 
-	"golang.org/bc-crypto/internal/boring"
+	"github.com/LiuXinfeng96/bc-crypto/internal/boring"
 )
 
 // FIPS 198-1:
