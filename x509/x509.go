@@ -18,7 +18,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"internal/godebug"
 	"io"
 	"math/big"
 	"net"
@@ -33,6 +32,7 @@ import (
 	_ "crypto/sha256"
 	_ "crypto/sha512"
 
+	"golang.org/bc-crypto/elliptic/secp256k1"
 	"golang.org/x/crypto/cryptobyte"
 	cryptobyte_asn1 "golang.org/x/crypto/cryptobyte/asn1"
 )
@@ -91,7 +91,19 @@ func marshalPublicKey(pub any) (publicKeyBytes []byte, publicKeyAlgorithm pkix.A
 		if !pub.Curve.IsOnCurve(pub.X, pub.Y) {
 			return nil, pkix.AlgorithmIdentifier{}, errors.New("x509: invalid elliptic curve public key")
 		}
-		publicKeyBytes = elliptic.Marshal(pub.Curve, pub.X, pub.Y)
+
+		if oid.Equal(oidNamedCurveS256) {
+			curve, ok := pub.Curve.(*secp256k1.BitCurve)
+			if !ok {
+				return nil, pkix.AlgorithmIdentifier{}, errors.New("x509: the curve type is not secp256k1")
+			}
+
+			publicKeyBytes = curve.Marshal(pub.X, pub.Y)
+		} else {
+
+			publicKeyBytes = elliptic.Marshal(pub.Curve, pub.X, pub.Y)
+		}
+
 		publicKeyAlgorithm.Algorithm = oidPublicKeyECDSA
 		var paramBytes []byte
 		paramBytes, err = asn1.Marshal(oid)
@@ -486,6 +498,7 @@ var (
 	oidNamedCurveP256 = asn1.ObjectIdentifier{1, 2, 840, 10045, 3, 1, 7}
 	oidNamedCurveP384 = asn1.ObjectIdentifier{1, 3, 132, 0, 34}
 	oidNamedCurveP521 = asn1.ObjectIdentifier{1, 3, 132, 0, 35}
+	oidNamedCurveS256 = asn1.ObjectIdentifier{1, 3, 132, 0, 10}
 )
 
 func namedCurveFromOID(oid asn1.ObjectIdentifier) elliptic.Curve {
@@ -498,6 +511,8 @@ func namedCurveFromOID(oid asn1.ObjectIdentifier) elliptic.Curve {
 		return elliptic.P384()
 	case oid.Equal(oidNamedCurveP521):
 		return elliptic.P521()
+	case oid.Equal(oidNamedCurveS256):
+		return secp256k1.S256()
 	}
 	return nil
 }
@@ -512,6 +527,8 @@ func oidFromNamedCurve(curve elliptic.Curve) (asn1.ObjectIdentifier, bool) {
 		return oidNamedCurveP384, true
 	case elliptic.P521():
 		return oidNamedCurveP521, true
+	case secp256k1.S256():
+		return oidNamedCurveS256, true
 	}
 
 	return nil, false
@@ -835,7 +852,7 @@ func checkSignature(algo SignatureAlgorithm, signed, signature []byte, publicKey
 		return InsecureAlgorithmError(algo)
 	case crypto.SHA1:
 		// SHA-1 signatures are mostly disabled. See go.dev/issue/41682.
-		if !allowSHA1 && godebug.Get("x509sha1") != "1" {
+		if !allowSHA1 {
 			return InsecureAlgorithmError(algo)
 		}
 		fallthrough
@@ -1357,7 +1374,7 @@ func signingParamsForPublicKey(pub any, requestedSigAlgo SignatureAlgorithm) (ha
 		pubType = ECDSA
 
 		switch pub.Curve {
-		case elliptic.P224(), elliptic.P256():
+		case elliptic.P224(), elliptic.P256(), secp256k1.S256():
 			hashFunc = crypto.SHA256
 			sigAlgo.Algorithm = oidSignatureECDSAWithSHA256
 		case elliptic.P384():

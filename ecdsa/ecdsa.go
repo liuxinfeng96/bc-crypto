@@ -23,6 +23,7 @@ import (
 	"crypto"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/sha512"
 	"errors"
@@ -426,3 +427,18 @@ func (zr) Read(dst []byte) (n int, err error) {
 }
 
 var zeroReader = zr{}
+
+func ToStandardLibraryPublicKey(pub PublicKey) ecdsa.PublicKey {
+	return ecdsa.PublicKey{
+		Curve: pub.Curve,
+		X:     pub.X,
+		Y:     pub.Y,
+	}
+}
+
+func ToStandardLibraryPrivateKey(priv PrivateKey) ecdsa.PrivateKey {
+	return ecdsa.PrivateKey{
+		PublicKey: ToStandardLibraryPublicKey(priv.PublicKey),
+		D:         priv.D,
+	}
+}

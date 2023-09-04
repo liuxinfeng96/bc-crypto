@@ -23,6 +23,7 @@ import (
 	"unicode/utf16"
 	"unicode/utf8"
 
+	"golang.org/bc-crypto/elliptic/secp256k1"
 	"golang.org/x/crypto/cryptobyte"
 	cryptobyte_asn1 "golang.org/x/crypto/cryptobyte/asn1"
 )
@@ -255,7 +256,19 @@ func parsePublicKey(algo PublicKeyAlgorithm, keyData *publicKeyInfo) (any, error
 		if namedCurve == nil {
 			return nil, errors.New("x509: unsupported elliptic curve")
 		}
-		x, y := elliptic.Unmarshal(namedCurve, der)
+
+		curve, ok := namedCurve.(*secp256k1.BitCurve)
+		if !ok {
+			return nil, errors.New("x509: the curve type is not secp256k1")
+		}
+
+		var x, y *big.Int
+		if ok {
+			x, y = curve.Unmarshal(der)
+		} else {
+			x, y = elliptic.Unmarshal(namedCurve, der)
+		}
+
 		if x == nil {
 			return nil, errors.New("x509: failed to unmarshal elliptic curve point")
 		}
