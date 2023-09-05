@@ -2347,6 +2347,60 @@ func ToStandardLibraryX509Cert(cert *Certificate) (*x509.Certificate, error) {
 	return newCert, nil
 }
 
+func FromStandardLibraryX509Cert(cert *x509.Certificate) (*Certificate, error) {
+	newCert := &Certificate{
+		Raw:                         cert.Raw,
+		RawTBSCertificate:           cert.RawTBSCertificate,
+		RawSubjectPublicKeyInfo:     cert.RawSubjectPublicKeyInfo,
+		RawSubject:                  cert.RawSubject,
+		RawIssuer:                   cert.RawIssuer,
+		Signature:                   cert.Signature,
+		SignatureAlgorithm:          SignatureAlgorithm(cert.SignatureAlgorithm),
+		PublicKeyAlgorithm:          PublicKeyAlgorithm(cert.PublicKeyAlgorithm),
+		PublicKey:                   cert.PublicKey,
+		Version:                     cert.Version,
+		SerialNumber:                cert.SerialNumber,
+		Issuer:                      cert.Issuer,
+		Subject:                     cert.Subject,
+		NotBefore:                   cert.NotBefore,
+		NotAfter:                    cert.NotAfter,
+		KeyUsage:                    KeyUsage(cert.KeyUsage),
+		Extensions:                  cert.Extensions,
+		ExtraExtensions:             cert.ExtraExtensions,
+		UnhandledCriticalExtensions: cert.UnhandledCriticalExtensions,
+		UnknownExtKeyUsage:          cert.UnknownExtKeyUsage,
+		BasicConstraintsValid:       cert.BasicConstraintsValid,
+		IsCA:                        cert.IsCA,
+		MaxPathLen:                  cert.MaxPathLen,
+		MaxPathLenZero:              cert.MaxPathLenZero,
+		SubjectKeyId:                cert.SubjectKeyId,
+		AuthorityKeyId:              cert.AuthorityKeyId,
+		OCSPServer:                  cert.OCSPServer,
+		IssuingCertificateURL:       cert.IssuingCertificateURL,
+		DNSNames:                    cert.DNSNames,
+		EmailAddresses:              cert.EmailAddresses,
+		IPAddresses:                 cert.IPAddresses,
+		URIs:                        cert.URIs,
+		PermittedDNSDomainsCritical: cert.PermittedDNSDomainsCritical,
+		PermittedDNSDomains:         cert.PermittedDNSDomains,
+		ExcludedDNSDomains:          cert.ExcludedDNSDomains,
+		PermittedIPRanges:           cert.PermittedIPRanges,
+		ExcludedIPRanges:            cert.ExcludedIPRanges,
+		PermittedEmailAddresses:     cert.PermittedEmailAddresses,
+		ExcludedEmailAddresses:      cert.ExcludedEmailAddresses,
+		PermittedURIDomains:         cert.PermittedURIDomains,
+		ExcludedURIDomains:          cert.ExcludedURIDomains,
+		CRLDistributionPoints:       cert.CRLDistributionPoints,
+		PolicyIdentifiers:           cert.PolicyIdentifiers,
+	}
+
+	for i := range cert.ExtKeyUsage {
+		newCert.ExtKeyUsage[i] = ExtKeyUsage(cert.ExtKeyUsage[i])
+	}
+
+	return newCert, nil
+}
+
 func ToStandardLibraryX509CSR(csr *CertificateRequest) (*x509.CertificateRequest, error) {
 	newCert := &x509.CertificateRequest{
 		Raw:                      csr.Raw,
@@ -2366,6 +2420,28 @@ func ToStandardLibraryX509CSR(csr *CertificateRequest) (*x509.CertificateRequest
 		EmailAddresses:           csr.EmailAddresses,
 		IPAddresses:              csr.IPAddresses,
 		URIs:                     csr.URIs,
+	}
+	return newCert, nil
+}
+
+func FromStandardLibraryX509CSR(cert *x509.CertificateRequest) (*CertificateRequest, error) {
+	newCert := &CertificateRequest{
+		Raw:                      cert.Raw,
+		RawTBSCertificateRequest: cert.RawTBSCertificateRequest,
+		RawSubjectPublicKeyInfo:  cert.RawSubjectPublicKeyInfo,
+		RawSubject:               cert.RawSubject,
+		Version:                  cert.Version,
+		Signature:                cert.Signature,
+		SignatureAlgorithm:       SignatureAlgorithm(cert.SignatureAlgorithm),
+		PublicKeyAlgorithm:       PublicKeyAlgorithm(cert.PublicKeyAlgorithm),
+		PublicKey:                cert.PublicKey,
+		Subject:                  cert.Subject,
+		Extensions:               cert.Extensions,
+		ExtraExtensions:          cert.ExtraExtensions,
+		DNSNames:                 cert.DNSNames,
+		EmailAddresses:           cert.EmailAddresses,
+		IPAddresses:              cert.IPAddresses,
+		URIs:                     cert.URIs,
 	}
 	return newCert, nil
 }
