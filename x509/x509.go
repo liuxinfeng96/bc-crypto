@@ -13,6 +13,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rsa"
 	"crypto/sha1"
+	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/pem"
@@ -2290,4 +2291,81 @@ func (rl *RevocationList) CheckSignatureFrom(parent *Certificate) error {
 	}
 
 	return parent.CheckSignature(rl.SignatureAlgorithm, rl.RawTBSRevocationList, rl.Signature)
+}
+
+func ToStandardLibraryX509Cert(cert *Certificate) (*x509.Certificate, error) {
+	newCert := &x509.Certificate{
+		Raw:                         cert.Raw,
+		RawTBSCertificate:           cert.RawTBSCertificate,
+		RawSubjectPublicKeyInfo:     cert.RawSubjectPublicKeyInfo,
+		RawSubject:                  cert.RawSubject,
+		RawIssuer:                   cert.RawIssuer,
+		Signature:                   cert.Signature,
+		SignatureAlgorithm:          x509.SignatureAlgorithm(cert.SignatureAlgorithm),
+		PublicKeyAlgorithm:          x509.PublicKeyAlgorithm(cert.PublicKeyAlgorithm),
+		PublicKey:                   cert.PublicKey,
+		Version:                     cert.Version,
+		SerialNumber:                cert.SerialNumber,
+		Issuer:                      cert.Issuer,
+		Subject:                     cert.Subject,
+		NotBefore:                   cert.NotBefore,
+		NotAfter:                    cert.NotAfter,
+		KeyUsage:                    x509.KeyUsage(cert.KeyUsage),
+		Extensions:                  cert.Extensions,
+		ExtraExtensions:             cert.ExtraExtensions,
+		UnhandledCriticalExtensions: cert.UnhandledCriticalExtensions,
+		UnknownExtKeyUsage:          cert.UnknownExtKeyUsage,
+		BasicConstraintsValid:       cert.BasicConstraintsValid,
+		IsCA:                        cert.IsCA,
+		MaxPathLen:                  cert.MaxPathLen,
+		MaxPathLenZero:              cert.MaxPathLenZero,
+		SubjectKeyId:                cert.SubjectKeyId,
+		AuthorityKeyId:              cert.AuthorityKeyId,
+		OCSPServer:                  cert.OCSPServer,
+		IssuingCertificateURL:       cert.IssuingCertificateURL,
+		DNSNames:                    cert.DNSNames,
+		EmailAddresses:              cert.EmailAddresses,
+		IPAddresses:                 cert.IPAddresses,
+		URIs:                        cert.URIs,
+		PermittedDNSDomainsCritical: cert.PermittedDNSDomainsCritical,
+		PermittedDNSDomains:         cert.PermittedDNSDomains,
+		ExcludedDNSDomains:          cert.ExcludedDNSDomains,
+		PermittedIPRanges:           cert.PermittedIPRanges,
+		ExcludedIPRanges:            cert.ExcludedIPRanges,
+		PermittedEmailAddresses:     cert.PermittedEmailAddresses,
+		ExcludedEmailAddresses:      cert.ExcludedEmailAddresses,
+		PermittedURIDomains:         cert.PermittedURIDomains,
+		ExcludedURIDomains:          cert.ExcludedURIDomains,
+		CRLDistributionPoints:       cert.CRLDistributionPoints,
+		PolicyIdentifiers:           cert.PolicyIdentifiers,
+	}
+
+	for i := range cert.ExtKeyUsage {
+		newCert.ExtKeyUsage[i] = x509.ExtKeyUsage(cert.ExtKeyUsage[i])
+	}
+
+	return newCert, nil
+}
+
+func ToStandardLibraryX509CSR(csr *CertificateRequest) (*x509.CertificateRequest, error) {
+	newCert := &x509.CertificateRequest{
+		Raw:                      csr.Raw,
+		RawTBSCertificateRequest: csr.RawTBSCertificateRequest,
+		RawSubjectPublicKeyInfo:  csr.RawSubjectPublicKeyInfo,
+		RawSubject:               csr.RawSubject,
+		Version:                  csr.Version,
+		Signature:                csr.Signature,
+		SignatureAlgorithm:       x509.SignatureAlgorithm(csr.SignatureAlgorithm),
+		PublicKeyAlgorithm:       x509.PublicKeyAlgorithm(csr.PublicKeyAlgorithm),
+		PublicKey:                csr.PublicKey,
+		Subject:                  csr.Subject,
+		Attributes:               csr.Attributes,
+		Extensions:               csr.Extensions,
+		ExtraExtensions:          csr.ExtraExtensions,
+		DNSNames:                 csr.DNSNames,
+		EmailAddresses:           csr.EmailAddresses,
+		IPAddresses:              csr.IPAddresses,
+		URIs:                     csr.URIs,
+	}
+	return newCert, nil
 }
