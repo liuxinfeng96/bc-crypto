@@ -15,6 +15,8 @@ import (
 	"fmt"
 	"hash"
 	"io"
+
+	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 )
 
 // verifyHandshakeSignature verifies a signature against pre-hashed
@@ -197,6 +199,8 @@ func signatureSchemesForCertificate(version uint16, cert *Certificate) []Signatu
 			sigAlgs = []SignatureScheme{ECDSAWithP384AndSHA384}
 		case elliptic.P521():
 			sigAlgs = []SignatureScheme{ECDSAWithP521AndSHA512}
+		case secp256k1.S256():
+			sigAlgs = []SignatureScheme{ECDSAWithP521AndSHA512}
 		default:
 			return nil
 		}
@@ -275,6 +279,7 @@ func unsupportedCertificateError(cert *Certificate) error {
 		case elliptic.P256():
 		case elliptic.P384():
 		case elliptic.P521():
+		case secp256k1.S256():
 		default:
 			return fmt.Errorf("tls: unsupported certificate curve (%s)", pub.Curve.Params().Name)
 		}

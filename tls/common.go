@@ -23,6 +23,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/LiuXinfeng96/bc-crypto/elliptic/secp256k1"
 )
 
 const (
@@ -119,6 +121,7 @@ const (
 	CurveP384 CurveID = 24
 	CurveP521 CurveID = 25
 	X25519    CurveID = 29
+	CurveS256 CurveID = 31
 )
 
 // TLS 1.3 Key Share. See RFC 8446, Section 4.2.8.
@@ -1212,6 +1215,8 @@ func (chi *ClientHelloInfo) SupportsCertificate(c *Certificate) error {
 				curve = CurveP384
 			case elliptic.P521():
 				curve = CurveP521
+			case secp256k1.S256():
+
 			default:
 				return supportsRSAFallback(unsupportedCertificateError(c))
 			}

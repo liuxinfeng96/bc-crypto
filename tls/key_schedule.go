@@ -12,6 +12,7 @@ import (
 	"io"
 	"math/big"
 
+	"github.com/LiuXinfeng96/bc-crypto/elliptic/secp256k1"
 	"golang.org/x/crypto/cryptobyte"
 	"golang.org/x/crypto/curve25519"
 	"golang.org/x/crypto/hkdf"
@@ -144,6 +145,8 @@ func curveForCurveID(id CurveID) (elliptic.Curve, bool) {
 		return elliptic.P384(), true
 	case CurveP521:
 		return elliptic.P521(), true
+	case CurveS256:
+		return secp256k1.S256(), true
 	default:
 		return nil, false
 	}

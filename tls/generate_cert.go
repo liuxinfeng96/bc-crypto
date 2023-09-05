@@ -25,6 +25,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 )
 
 var (
@@ -74,6 +76,8 @@ func main() {
 		priv, err = ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
 	case "P521":
 		priv, err = ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
+	case "S256":
+		priv, err = ecdsa.GenerateKey(secp256k1.S256(), rand.Reader)
 	default:
 		log.Fatalf("Unrecognized elliptic curve: %q", *ecdsaCurve)
 	}

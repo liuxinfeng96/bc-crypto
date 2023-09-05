@@ -11,6 +11,8 @@ import (
 	"crypto/elliptic"
 	"crypto/internal/boring/fipstls"
 	"crypto/rsa"
+
+	"github.com/LiuXinfeng96/bc-crypto/elliptic/secp256k1"
 )
 
 // boringAllowCert reports whether c is allowed to be used
@@ -31,7 +33,8 @@ func boringAllowCert(c *Certificate) bool {
 			return false
 		}
 	case *ecdsa.PublicKey:
-		if k.Curve != elliptic.P256() && k.Curve != elliptic.P384() && k.Curve != elliptic.P521() {
+		if k.Curve != elliptic.P256() && k.Curve != elliptic.P384() &&
+			k.Curve != elliptic.P521() && k.Curve != secp256k1.S256() {
 			return false
 		}
 	}
