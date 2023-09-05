@@ -11,6 +11,8 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+
+	"github.com/LiuXinfeng96/bc-crypto/elliptic/secp256k1"
 )
 
 const ecPrivKeyVersion = 1
@@ -58,11 +60,20 @@ func marshalECPrivateKeyWithOID(key *ecdsa.PrivateKey, oid asn1.ObjectIdentifier
 		return nil, errors.New("invalid elliptic key public key")
 	}
 	privateKey := make([]byte, (key.Curve.Params().N.BitLen()+7)/8)
+
+	var pubBytes []byte
+
+	if oid.Equal(oidNamedCurveS256) {
+		pubBytes = key.Curve.(*secp256k1.BitCurve).Marshal(key.X, key.Y)
+	} else {
+		pubBytes = elliptic.Marshal(key.Curve, key.X, key.Y)
+	}
+
 	return asn1.Marshal(ecPrivateKey{
 		Version:       1,
 		PrivateKey:    key.D.FillBytes(privateKey),
 		NamedCurveOID: oid,
-		PublicKey:     asn1.BitString{Bytes: elliptic.Marshal(key.Curve, key.X, key.Y)},
+		PublicKey:     asn1.BitString{Bytes: pubBytes},
 	})
 }
 
