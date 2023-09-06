@@ -5,13 +5,12 @@
 package x509
 
 import (
+	"crypto/ecdsa"
 	"crypto/elliptic"
 	"encoding/asn1"
 	"errors"
 	"fmt"
 	"math/big"
-
-	"github.com/LiuXinfeng96/bc-crypto/ecdsa"
 
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 )
