@@ -16,7 +16,7 @@ import (
 	"hash"
 	"io"
 
-	"github.com/LiuXinfeng96/bc-crypto/elliptic/secp256k1"
+	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 )
 
 // verifyHandshakeSignature verifies a signature against pre-hashed

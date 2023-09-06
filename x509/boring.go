@@ -12,7 +12,7 @@ import (
 	"crypto/internal/boring/fipstls"
 	"crypto/rsa"
 
-	"github.com/LiuXinfeng96/bc-crypto/elliptic/secp256k1"
+	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 )
 
 // boringAllowCert reports whether c is allowed to be used

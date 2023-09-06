@@ -24,7 +24,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/LiuXinfeng96/bc-crypto/elliptic/secp256k1"
+	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 )
 
 const (

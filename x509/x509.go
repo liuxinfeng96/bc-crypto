@@ -33,7 +33,7 @@ import (
 	_ "crypto/sha256"
 	_ "crypto/sha512"
 
-	"github.com/LiuXinfeng96/bc-crypto/elliptic/secp256k1"
+	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 	"golang.org/x/crypto/cryptobyte"
 	cryptobyte_asn1 "golang.org/x/crypto/cryptobyte/asn1"
 )
