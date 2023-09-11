@@ -8,7 +8,6 @@ package x509
 import (
 	"bytes"
 	"crypto"
-	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/rsa"
@@ -34,6 +33,7 @@ import (
 	_ "crypto/sha512"
 
 	local "github.com/LiuXinfeng96/bc-crypto"
+	"github.com/LiuXinfeng96/bc-crypto/ecdsa"
 	ec "github.com/LiuXinfeng96/bc-crypto/ecdsa"
 	"github.com/tjfoc/gmsm/sm2"
 
@@ -911,9 +911,7 @@ func checkSignature(algo SignatureAlgorithm, signed, signature []byte, publicKey
 			return signaturePublicKeyAlgoMismatchError(pubKeyAlgo, pub)
 		}
 
-		localPub := ec.FromStandardLibraryPublicKey(*pub)
-
-		if !ec.VerifyASN1(&localPub, signed, signature) {
+		if !ec.VerifyASN1(pub, signed, signature) {
 			return errors.New("x509: ECDSA verification failure")
 		}
 
