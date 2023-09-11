@@ -33,6 +33,10 @@ import (
 	_ "crypto/sha256"
 	_ "crypto/sha512"
 
+	local "github.com/LiuXinfeng96/bc-crypto"
+	ec "github.com/LiuXinfeng96/bc-crypto/ecdsa"
+	"github.com/tjfoc/gmsm/sm2"
+
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 	"golang.org/x/crypto/cryptobyte"
 	cryptobyte_asn1 "golang.org/x/crypto/cryptobyte/asn1"
@@ -214,6 +218,10 @@ const (
 	SHA384WithRSAPSS
 	SHA512WithRSAPSS
 	PureEd25519
+
+	SM2WithSM3
+	SM2WithSHA1
+	SM2WithSHA256
 )
 
 func (algo SignatureAlgorithm) isRSAPSS() bool {
@@ -242,6 +250,7 @@ const (
 	DSA // Unsupported.
 	ECDSA
 	Ed25519
+	SM2
 )
 
 var publicKeyAlgoName = [...]string{
@@ -249,6 +258,7 @@ var publicKeyAlgoName = [...]string{
 	DSA:     "DSA",
 	ECDSA:   "ECDSA",
 	Ed25519: "Ed25519",
+	SM2:     "SM2",
 }
 
 func (algo PublicKeyAlgorithm) String() string {
@@ -324,9 +334,15 @@ var (
 	oidSignatureECDSAWithSHA512 = asn1.ObjectIdentifier{1, 2, 840, 10045, 4, 3, 4}
 	oidSignatureEd25519         = asn1.ObjectIdentifier{1, 3, 101, 112}
 
-	oidSHA256 = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 2, 1}
-	oidSHA384 = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 2, 2}
-	oidSHA512 = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 2, 3}
+	oidSignatureSM2WithSM3    = asn1.ObjectIdentifier{1, 2, 156, 10197, 1, 501}
+	oidSignatureSM2WithSHA1   = asn1.ObjectIdentifier{1, 2, 156, 10197, 1, 502}
+	oidSignatureSM2WithSHA256 = asn1.ObjectIdentifier{1, 2, 156, 10197, 1, 503}
+
+	oidSM3     = asn1.ObjectIdentifier{1, 2, 156, 10197, 1, 401, 1}
+	oidSHA256  = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 2, 1}
+	oidSHA384  = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 2, 2}
+	oidSHA512  = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 2, 3}
+	oidHashSM3 = asn1.ObjectIdentifier{1, 2, 156, 10197, 1, 401}
 
 	oidMGF1 = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 1, 8}
 
@@ -341,25 +357,29 @@ var signatureAlgorithmDetails = []struct {
 	name       string
 	oid        asn1.ObjectIdentifier
 	pubKeyAlgo PublicKeyAlgorithm
-	hash       crypto.Hash
+	hash       local.Hash
 }{
-	{MD2WithRSA, "MD2-RSA", oidSignatureMD2WithRSA, RSA, crypto.Hash(0) /* no value for MD2 */},
-	{MD5WithRSA, "MD5-RSA", oidSignatureMD5WithRSA, RSA, crypto.MD5},
-	{SHA1WithRSA, "SHA1-RSA", oidSignatureSHA1WithRSA, RSA, crypto.SHA1},
-	{SHA1WithRSA, "SHA1-RSA", oidISOSignatureSHA1WithRSA, RSA, crypto.SHA1},
-	{SHA256WithRSA, "SHA256-RSA", oidSignatureSHA256WithRSA, RSA, crypto.SHA256},
-	{SHA384WithRSA, "SHA384-RSA", oidSignatureSHA384WithRSA, RSA, crypto.SHA384},
-	{SHA512WithRSA, "SHA512-RSA", oidSignatureSHA512WithRSA, RSA, crypto.SHA512},
-	{SHA256WithRSAPSS, "SHA256-RSAPSS", oidSignatureRSAPSS, RSA, crypto.SHA256},
-	{SHA384WithRSAPSS, "SHA384-RSAPSS", oidSignatureRSAPSS, RSA, crypto.SHA384},
-	{SHA512WithRSAPSS, "SHA512-RSAPSS", oidSignatureRSAPSS, RSA, crypto.SHA512},
-	{DSAWithSHA1, "DSA-SHA1", oidSignatureDSAWithSHA1, DSA, crypto.SHA1},
-	{DSAWithSHA256, "DSA-SHA256", oidSignatureDSAWithSHA256, DSA, crypto.SHA256},
-	{ECDSAWithSHA1, "ECDSA-SHA1", oidSignatureECDSAWithSHA1, ECDSA, crypto.SHA1},
-	{ECDSAWithSHA256, "ECDSA-SHA256", oidSignatureECDSAWithSHA256, ECDSA, crypto.SHA256},
-	{ECDSAWithSHA384, "ECDSA-SHA384", oidSignatureECDSAWithSHA384, ECDSA, crypto.SHA384},
-	{ECDSAWithSHA512, "ECDSA-SHA512", oidSignatureECDSAWithSHA512, ECDSA, crypto.SHA512},
-	{PureEd25519, "Ed25519", oidSignatureEd25519, Ed25519, crypto.Hash(0) /* no pre-hashing */},
+	{MD2WithRSA, "MD2-RSA", oidSignatureMD2WithRSA, RSA, local.Hash(0) /* no value for MD2 */},
+	{MD5WithRSA, "MD5-RSA", oidSignatureMD5WithRSA, RSA, local.MD5},
+	{SHA1WithRSA, "SHA1-RSA", oidSignatureSHA1WithRSA, RSA, local.SHA1},
+	{SHA1WithRSA, "SHA1-RSA", oidISOSignatureSHA1WithRSA, RSA, local.SHA1},
+	{SHA256WithRSA, "SHA256-RSA", oidSignatureSHA256WithRSA, RSA, local.SHA256},
+	{SHA384WithRSA, "SHA384-RSA", oidSignatureSHA384WithRSA, RSA, local.SHA384},
+	{SHA512WithRSA, "SHA512-RSA", oidSignatureSHA512WithRSA, RSA, local.SHA512},
+	{SHA256WithRSAPSS, "SHA256-RSAPSS", oidSignatureRSAPSS, RSA, local.SHA256},
+	{SHA384WithRSAPSS, "SHA384-RSAPSS", oidSignatureRSAPSS, RSA, local.SHA384},
+	{SHA512WithRSAPSS, "SHA512-RSAPSS", oidSignatureRSAPSS, RSA, local.SHA512},
+	{DSAWithSHA1, "DSA-SHA1", oidSignatureDSAWithSHA1, DSA, local.SHA1},
+	{DSAWithSHA256, "DSA-SHA256", oidSignatureDSAWithSHA256, DSA, local.SHA256},
+	{ECDSAWithSHA1, "ECDSA-SHA1", oidSignatureECDSAWithSHA1, ECDSA, local.SHA1},
+	{ECDSAWithSHA256, "ECDSA-SHA256", oidSignatureECDSAWithSHA256, ECDSA, local.SHA256},
+	{ECDSAWithSHA384, "ECDSA-SHA384", oidSignatureECDSAWithSHA384, ECDSA, local.SHA384},
+	{ECDSAWithSHA512, "ECDSA-SHA512", oidSignatureECDSAWithSHA512, ECDSA, local.SHA512},
+	{PureEd25519, "Ed25519", oidSignatureEd25519, Ed25519, local.Hash(0) /* no pre-hashing */},
+
+	{SM2WithSM3, "SM2-SM3", oidSignatureSM2WithSM3, ECDSA, local.SM3},
+	{SM2WithSHA1, "SM2-SHA1", oidSignatureSM2WithSHA1, ECDSA, local.SHA1},
+	{SM2WithSHA256, "SM2-SHA256", oidSignatureSM2WithSHA256, ECDSA, local.SHA256},
 }
 
 // hashToPSSParameters contains the DER encoded RSA PSS parameters for the
@@ -369,10 +389,10 @@ var signatureAlgorithmDetails = []struct {
 //   - maskGenAlgorithm always contains the default mgf1SHA1 identifier
 //   - saltLength contains the length of the associated hash
 //   - trailerField always contains the default trailerFieldBC value
-var hashToPSSParameters = map[crypto.Hash]asn1.RawValue{
-	crypto.SHA256: asn1.RawValue{FullBytes: []byte{48, 52, 160, 15, 48, 13, 6, 9, 96, 134, 72, 1, 101, 3, 4, 2, 1, 5, 0, 161, 28, 48, 26, 6, 9, 42, 134, 72, 134, 247, 13, 1, 1, 8, 48, 13, 6, 9, 96, 134, 72, 1, 101, 3, 4, 2, 1, 5, 0, 162, 3, 2, 1, 32}},
-	crypto.SHA384: asn1.RawValue{FullBytes: []byte{48, 52, 160, 15, 48, 13, 6, 9, 96, 134, 72, 1, 101, 3, 4, 2, 2, 5, 0, 161, 28, 48, 26, 6, 9, 42, 134, 72, 134, 247, 13, 1, 1, 8, 48, 13, 6, 9, 96, 134, 72, 1, 101, 3, 4, 2, 2, 5, 0, 162, 3, 2, 1, 48}},
-	crypto.SHA512: asn1.RawValue{FullBytes: []byte{48, 52, 160, 15, 48, 13, 6, 9, 96, 134, 72, 1, 101, 3, 4, 2, 3, 5, 0, 161, 28, 48, 26, 6, 9, 42, 134, 72, 134, 247, 13, 1, 1, 8, 48, 13, 6, 9, 96, 134, 72, 1, 101, 3, 4, 2, 3, 5, 0, 162, 3, 2, 1, 64}},
+var hashToPSSParameters = map[local.Hash]asn1.RawValue{
+	local.SHA256: asn1.RawValue{FullBytes: []byte{48, 52, 160, 15, 48, 13, 6, 9, 96, 134, 72, 1, 101, 3, 4, 2, 1, 5, 0, 161, 28, 48, 26, 6, 9, 42, 134, 72, 134, 247, 13, 1, 1, 8, 48, 13, 6, 9, 96, 134, 72, 1, 101, 3, 4, 2, 1, 5, 0, 162, 3, 2, 1, 32}},
+	local.SHA384: asn1.RawValue{FullBytes: []byte{48, 52, 160, 15, 48, 13, 6, 9, 96, 134, 72, 1, 101, 3, 4, 2, 2, 5, 0, 161, 28, 48, 26, 6, 9, 42, 134, 72, 134, 247, 13, 1, 1, 8, 48, 13, 6, 9, 96, 134, 72, 1, 101, 3, 4, 2, 2, 5, 0, 162, 3, 2, 1, 48}},
+	local.SHA512: asn1.RawValue{FullBytes: []byte{48, 52, 160, 15, 48, 13, 6, 9, 96, 134, 72, 1, 101, 3, 4, 2, 3, 5, 0, 161, 28, 48, 26, 6, 9, 42, 134, 72, 134, 247, 13, 1, 1, 8, 48, 13, 6, 9, 96, 134, 72, 1, 101, 3, 4, 2, 3, 5, 0, 162, 3, 2, 1, 64}},
 }
 
 // pssParameters reflects the parameters in an AlgorithmIdentifier that
@@ -462,6 +482,8 @@ var (
 	oidPublicKeyDSA     = asn1.ObjectIdentifier{1, 2, 840, 10040, 4, 1}
 	oidPublicKeyECDSA   = asn1.ObjectIdentifier{1, 2, 840, 10045, 2, 1}
 	oidPublicKeyEd25519 = oidSignatureEd25519
+
+	oidPublicKeySM2 = asn1.ObjectIdentifier{1, 2, 156, 10197, 1, 301, 1}
 )
 
 func getPublicKeyAlgorithmFromOID(oid asn1.ObjectIdentifier) PublicKeyAlgorithm {
@@ -474,6 +496,8 @@ func getPublicKeyAlgorithmFromOID(oid asn1.ObjectIdentifier) PublicKeyAlgorithm 
 		return ECDSA
 	case oid.Equal(oidPublicKeyEd25519):
 		return Ed25519
+	case oid.Equal(oidPublicKeySM2):
+		return SM2
 	}
 	return UnknownPublicKeyAlgorithm
 }
@@ -500,6 +524,8 @@ var (
 	oidNamedCurveP384 = asn1.ObjectIdentifier{1, 3, 132, 0, 34}
 	oidNamedCurveP521 = asn1.ObjectIdentifier{1, 3, 132, 0, 35}
 	oidNamedCurveS256 = asn1.ObjectIdentifier{1, 3, 132, 0, 10}
+
+	oidNamedCurveP256SM2 = asn1.ObjectIdentifier{1, 2, 156, 10197, 1, 301}
 )
 
 func namedCurveFromOID(oid asn1.ObjectIdentifier) elliptic.Curve {
@@ -514,6 +540,8 @@ func namedCurveFromOID(oid asn1.ObjectIdentifier) elliptic.Curve {
 		return elliptic.P521()
 	case oid.Equal(oidNamedCurveS256):
 		return secp256k1.S256()
+	case oid.Equal(oidNamedCurveP256SM2):
+		return sm2.P256Sm2()
 	}
 	return nil
 }
@@ -530,6 +558,8 @@ func oidFromNamedCurve(curve elliptic.Curve) (asn1.ObjectIdentifier, bool) {
 		return oidNamedCurveP521, true
 	case secp256k1.S256():
 		return oidNamedCurveS256, true
+	case sm2.P256Sm2():
+		return oidNamedCurveP256SM2, true
 	}
 
 	return nil, false
@@ -834,7 +864,7 @@ func signaturePublicKeyAlgoMismatchError(expectedPubKeyAlgo PublicKeyAlgorithm, 
 // checkSignature verifies that signature is a valid signature over signed from
 // a crypto.PublicKey.
 func checkSignature(algo SignatureAlgorithm, signed, signature []byte, publicKey crypto.PublicKey, allowSHA1 bool) (err error) {
-	var hashType crypto.Hash
+	var hashType local.Hash
 	var pubKeyAlgo PublicKeyAlgorithm
 
 	for _, details := range signatureAlgorithmDetails {
@@ -845,13 +875,13 @@ func checkSignature(algo SignatureAlgorithm, signed, signature []byte, publicKey
 	}
 
 	switch hashType {
-	case crypto.Hash(0):
+	case local.Hash(0):
 		if pubKeyAlgo != Ed25519 {
 			return ErrUnsupportedAlgorithm
 		}
-	case crypto.MD5:
+	case local.MD5:
 		return InsecureAlgorithmError(algo)
-	case crypto.SHA1:
+	case local.SHA1:
 		// SHA-1 signatures are mostly disabled. See go.dev/issue/41682.
 		if !allowSHA1 {
 			return InsecureAlgorithmError(algo)
@@ -872,17 +902,21 @@ func checkSignature(algo SignatureAlgorithm, signed, signature []byte, publicKey
 			return signaturePublicKeyAlgoMismatchError(pubKeyAlgo, pub)
 		}
 		if algo.isRSAPSS() {
-			return rsa.VerifyPSS(pub, hashType, signed, signature, &rsa.PSSOptions{SaltLength: rsa.PSSSaltLengthEqualsHash})
+			return rsa.VerifyPSS(pub, crypto.Hash(hashType), signed, signature, &rsa.PSSOptions{SaltLength: rsa.PSSSaltLengthEqualsHash})
 		} else {
-			return rsa.VerifyPKCS1v15(pub, hashType, signed, signature)
+			return rsa.VerifyPKCS1v15(pub, crypto.Hash(hashType), signed, signature)
 		}
 	case *ecdsa.PublicKey:
 		if pubKeyAlgo != ECDSA {
 			return signaturePublicKeyAlgoMismatchError(pubKeyAlgo, pub)
 		}
-		if !ecdsa.VerifyASN1(pub, signed, signature) {
+
+		localPub := ec.FromStandardLibraryPublicKey(*pub)
+
+		if !ec.VerifyASN1(&localPub, signed, signature) {
 			return errors.New("x509: ECDSA verification failure")
 		}
+
 		return
 	case ed25519.PublicKey:
 		if pubKeyAlgo != Ed25519 {
@@ -1361,13 +1395,13 @@ func subjectBytes(cert *Certificate) ([]byte, error) {
 // signingParamsForPublicKey returns the parameters to use for signing with
 // priv. If requestedSigAlgo is not zero then it overrides the default
 // signature algorithm.
-func signingParamsForPublicKey(pub any, requestedSigAlgo SignatureAlgorithm) (hashFunc crypto.Hash, sigAlgo pkix.AlgorithmIdentifier, err error) {
+func signingParamsForPublicKey(pub any, requestedSigAlgo SignatureAlgorithm) (hashFunc local.Hash, sigAlgo pkix.AlgorithmIdentifier, err error) {
 	var pubType PublicKeyAlgorithm
 
 	switch pub := pub.(type) {
 	case *rsa.PublicKey:
 		pubType = RSA
-		hashFunc = crypto.SHA256
+		hashFunc = local.SHA256
 		sigAlgo.Algorithm = oidSignatureSHA256WithRSA
 		sigAlgo.Parameters = asn1.NullRawValue
 
@@ -1376,14 +1410,17 @@ func signingParamsForPublicKey(pub any, requestedSigAlgo SignatureAlgorithm) (ha
 
 		switch pub.Curve {
 		case elliptic.P224(), elliptic.P256(), secp256k1.S256():
-			hashFunc = crypto.SHA256
+			hashFunc = local.SHA256
 			sigAlgo.Algorithm = oidSignatureECDSAWithSHA256
 		case elliptic.P384():
-			hashFunc = crypto.SHA384
+			hashFunc = local.SHA384
 			sigAlgo.Algorithm = oidSignatureECDSAWithSHA384
 		case elliptic.P521():
-			hashFunc = crypto.SHA512
+			hashFunc = local.SHA512
 			sigAlgo.Algorithm = oidSignatureECDSAWithSHA512
+		case sm2.P256Sm2():
+			hashFunc = local.SM3
+			sigAlgo.Algorithm = oidSignatureSM2WithSM3
 		default:
 			err = errors.New("x509: unknown elliptic curve")
 		}
@@ -1416,7 +1453,7 @@ func signingParamsForPublicKey(pub any, requestedSigAlgo SignatureAlgorithm) (ha
 				err = errors.New("x509: cannot sign with hash function requested")
 				return
 			}
-			if hashFunc == crypto.MD5 {
+			if hashFunc == local.MD5 {
 				err = errors.New("x509: signing with MD5 is not supported")
 				return
 			}
@@ -1583,17 +1620,23 @@ func CreateCertificate(rand io.Reader, template, parent *Certificate, pub, priv 
 	c.Raw = tbsCertContents
 
 	signed := tbsCertContents
-	if hashFunc != 0 {
-		h := hashFunc.New()
-		h.Write(signed)
-		signed = h.Sum(nil)
+
+	switch template.SignatureAlgorithm {
+	case SM2WithSM3, SM2WithSHA1, SM2WithSHA256:
+		break
+	default:
+		if hashFunc != 0 {
+			h := hashFunc.New()
+			h.Write(signed)
+			signed = h.Sum(nil)
+		}
 	}
 
 	var signerOpts crypto.SignerOpts = hashFunc
 	if template.SignatureAlgorithm != 0 && template.SignatureAlgorithm.isRSAPSS() {
 		signerOpts = &rsa.PSSOptions{
 			SaltLength: rsa.PSSSaltLengthEqualsHash,
-			Hash:       hashFunc,
+			Hash:       crypto.Hash(hashFunc),
 		}
 	}
 
@@ -1888,7 +1931,7 @@ func CreateCertificateRequest(rand io.Reader, template *CertificateRequest, priv
 		return nil, errors.New("x509: certificate private key does not implement crypto.Signer")
 	}
 
-	var hashFunc crypto.Hash
+	var hashFunc local.Hash
 	var sigAlgo pkix.AlgorithmIdentifier
 	hashFunc, sigAlgo, err = signingParamsForPublicKey(key.Public(), template.SignatureAlgorithm)
 	if err != nil {
@@ -2017,10 +2060,15 @@ func CreateCertificateRequest(rand io.Reader, template *CertificateRequest, priv
 	tbsCSR.Raw = tbsCSRContents
 
 	signed := tbsCSRContents
-	if hashFunc != 0 {
-		h := hashFunc.New()
-		h.Write(signed)
-		signed = h.Sum(nil)
+	switch template.SignatureAlgorithm {
+	case SM2WithSM3, SM2WithSHA1, SM2WithSHA256, UnknownSignatureAlgorithm:
+		break
+	default:
+		if hashFunc != 0 {
+			h := hashFunc.New()
+			h.Write(signed)
+			signed = h.Sum(nil)
+		}
 	}
 
 	var signature []byte
@@ -2258,7 +2306,7 @@ func CreateRevocationList(rand io.Reader, template *RevocationList, issuer *Cert
 	if template.SignatureAlgorithm.isRSAPSS() {
 		signerOpts = &rsa.PSSOptions{
 			SaltLength: rsa.PSSSaltLengthEqualsHash,
-			Hash:       hashFunc,
+			Hash:       crypto.Hash(hashFunc),
 		}
 	}
 

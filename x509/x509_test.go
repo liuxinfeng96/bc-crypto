@@ -32,6 +32,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	local "github.com/LiuXinfeng96/bc-crypto"
 )
 
 func TestParsePKCS1PrivateKey(t *testing.T) {
@@ -2773,15 +2775,15 @@ func TestCreateRevocationList(t *testing.T) {
 }
 
 func TestRSAPSAParameters(t *testing.T) {
-	generateParams := func(hashFunc crypto.Hash) []byte {
+	generateParams := func(hashFunc local.Hash) []byte {
 		var hashOID asn1.ObjectIdentifier
 
 		switch hashFunc {
-		case crypto.SHA256:
+		case local.SHA256:
 			hashOID = oidSHA256
-		case crypto.SHA384:
+		case local.SHA384:
 			hashOID = oidSHA384
-		case crypto.SHA512:
+		case local.SHA512:
 			hashOID = oidSHA512
 		}
 

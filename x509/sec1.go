@@ -69,6 +69,18 @@ func marshalECPrivateKeyWithOID(key *ecdsa.PrivateKey, oid asn1.ObjectIdentifier
 		pubBytes = elliptic.Marshal(key.Curve, key.X, key.Y)
 	}
 
+	if oid.Equal(oidNamedCurveP256SM2) {
+		pubBytes = key.D.Bytes()
+		copy(privateKey[len(privateKey)-len(pubBytes):], pubBytes)
+
+		return asn1.Marshal(ecPrivateKey{
+			Version:       1,
+			PrivateKey:    privateKey,
+			NamedCurveOID: oid,
+			PublicKey:     asn1.BitString{Bytes: pubBytes},
+		})
+	}
+
 	return asn1.Marshal(ecPrivateKey{
 		Version:       1,
 		PrivateKey:    key.D.FillBytes(privateKey),

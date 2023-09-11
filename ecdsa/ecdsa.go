@@ -33,6 +33,7 @@ import (
 	"github.com/LiuXinfeng96/bc-crypto/internal/boring"
 	"github.com/LiuXinfeng96/bc-crypto/internal/boring/bbig"
 	"github.com/LiuXinfeng96/bc-crypto/internal/randutil"
+	"github.com/tjfoc/gmsm/sm2"
 
 	"golang.org/x/crypto/cryptobyte"
 	"golang.org/x/crypto/cryptobyte/asn1"
@@ -413,6 +414,17 @@ func VerifyASN1(pub *PublicKey, hash, sig []byte) bool {
 		!inner.Empty() {
 		return false
 	}
+
+	switch pub.Curve {
+	case sm2.P256Sm2():
+		sm2pub := &sm2.PublicKey{
+			Curve: pub.Curve,
+			X:     pub.X,
+			Y:     pub.Y,
+		}
+		return sm2.Verify(sm2pub, sig, r, s)
+	}
+
 	return Verify(pub, hash, r, s)
 }
 
@@ -439,6 +451,21 @@ func ToStandardLibraryPublicKey(pub PublicKey) ecdsa.PublicKey {
 func ToStandardLibraryPrivateKey(priv PrivateKey) ecdsa.PrivateKey {
 	return ecdsa.PrivateKey{
 		PublicKey: ToStandardLibraryPublicKey(priv.PublicKey),
+		D:         priv.D,
+	}
+}
+
+func FromStandardLibraryPublicKey(pub ecdsa.PublicKey) PublicKey {
+	return PublicKey{
+		Curve: pub.Curve,
+		X:     pub.X,
+		Y:     pub.Y,
+	}
+}
+
+func FromStandardLibraryPrivateKey(priv ecdsa.PrivateKey) PrivateKey {
+	return PrivateKey{
+		PublicKey: FromStandardLibraryPublicKey(priv.PublicKey),
 		D:         priv.D,
 	}
 }

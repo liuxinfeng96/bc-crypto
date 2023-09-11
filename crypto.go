@@ -6,9 +6,17 @@
 package crypto
 
 import (
+	"crypto"
+	"crypto/md5"
+	"crypto/sha1"
+	"crypto/sha256"
+	"crypto/sha512"
 	"hash"
 	"io"
 	"strconv"
+
+	"github.com/tjfoc/gmsm/sm3"
+	"golang.org/x/crypto/sha3"
 )
 
 // Hash identifies a cryptographic hash function that is implemented in another
@@ -16,8 +24,8 @@ import (
 type Hash uint
 
 // HashFunc simply returns the value of h so that Hash implements SignerOpts.
-func (h Hash) HashFunc() Hash {
-	return h
+func (h Hash) HashFunc() crypto.Hash {
+	return crypto.Hash(h)
 }
 
 func (h Hash) String() string {
@@ -60,6 +68,8 @@ func (h Hash) String() string {
 		return "BLAKE2b-384"
 	case BLAKE2b_512:
 		return "BLAKE2b-512"
+	case SM3:
+		return "SM3"
 	default:
 		return "unknown hash value " + strconv.Itoa(int(h))
 	}
@@ -85,6 +95,7 @@ const (
 	BLAKE2b_256                 // import golang.org/x/crypto/blake2b
 	BLAKE2b_384                 // import golang.org/x/crypto/blake2b
 	BLAKE2b_512                 // import golang.org/x/crypto/blake2b
+	SM3                         // import github.com/tjfoc/gmsm/sm3
 	maxHash
 )
 
@@ -108,6 +119,7 @@ var digestSizes = []uint8{
 	BLAKE2b_256: 32,
 	BLAKE2b_384: 48,
 	BLAKE2b_512: 64,
+	SM3:         32,
 }
 
 // Size returns the length, in bytes, of a digest resulting from the given hash
@@ -221,3 +233,24 @@ type Decrypter interface {
 }
 
 type DecrypterOpts any
+
+func init() {
+
+	RegisterHash(MD4, nil)
+	RegisterHash(MD5, md5.New)
+	RegisterHash(SHA1, sha1.New)
+	RegisterHash(SHA224, sha256.New224)
+	RegisterHash(SHA256, sha256.New)
+	RegisterHash(SHA384, sha512.New384)
+	RegisterHash(SHA512, sha512.New)
+	RegisterHash(MD5SHA1, nil)
+	RegisterHash(RIPEMD160, nil)
+	RegisterHash(SHA3_224, sha3.New224)
+	RegisterHash(SHA3_256, sha3.New256)
+	RegisterHash(SHA3_384, sha3.New384)
+	RegisterHash(SHA3_512, sha3.New512)
+	RegisterHash(SHA512_224, sha512.New512_224)
+	RegisterHash(SHA512_256, sha512.New512_256)
+
+	RegisterHash(SM3, sm3.New)
+}
