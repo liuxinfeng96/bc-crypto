@@ -215,72 +215,89 @@ var errZeroParam = errors.New("zero parameter")
 // returns the signature as a pair of integers. Most applications should use
 // SignASN1 instead of dealing directly with r, s.
 func Sign(rand io.Reader, priv *PrivateKey, hash []byte) (r, s *big.Int, err error) {
-	randutil.MaybeReadByte(rand)
 
-	if boring.Enabled && rand == boring.RandReader {
-		b, err := boringPrivateKey(priv)
+	switch priv.Curve {
+	case sm2.P256Sm2():
+		var pk sm2.PublicKey
+		pk.Curve = priv.Curve
+		pk.X = priv.X
+		pk.Y = priv.Y
+
+		sk := &sm2.PrivateKey{
+			PublicKey: pk,
+			D:         priv.D,
+		}
+		return sm2.Sm2Sign(sk, hash, nil, rand)
+
+	default:
+
+		randutil.MaybeReadByte(rand)
+
+		if boring.Enabled && rand == boring.RandReader {
+			b, err := boringPrivateKey(priv)
+			if err != nil {
+				return nil, nil, err
+			}
+			sig, err := boring.SignMarshalECDSA(b, hash)
+			if err != nil {
+				return nil, nil, err
+			}
+			var r, s big.Int
+			var inner cryptobyte.String
+			input := cryptobyte.String(sig)
+			if !input.ReadASN1(&inner, asn1.SEQUENCE) ||
+				!input.Empty() ||
+				!inner.ReadASN1Integer(&r) ||
+				!inner.ReadASN1Integer(&s) ||
+				!inner.Empty() {
+				return nil, nil, errors.New("invalid ASN.1 from boringcrypto")
+			}
+			return &r, &s, nil
+		}
+		boring.UnreachableExceptTests()
+
+		// This implementation derives the nonce from an AES-CTR CSPRNG keyed by:
+		//
+		//    SHA2-512(priv.D || entropy || hash)[:32]
+		//
+		// The CSPRNG key is indifferentiable from a random oracle as shown in
+		// [Coron], the AES-CTR stream is indifferentiable from a random oracle
+		// under standard cryptographic assumptions (see [Larsson] for examples).
+		//
+		// [Coron]: https://cs.nyu.edu/~dodis/ps/merkle.pdf
+		// [Larsson]: https://web.archive.org/web/20040719170906/https://www.nada.kth.se/kurser/kth/2D1441/semteo03/lecturenotes/assump.pdf
+
+		// Get 256 bits of entropy from rand.
+		entropy := make([]byte, 32)
+		_, err = io.ReadFull(rand, entropy)
+		if err != nil {
+			return
+		}
+
+		// Initialize an SHA-512 hash context; digest...
+		md := sha512.New()
+		md.Write(priv.D.Bytes()) // the private key,
+		md.Write(entropy)        // the entropy,
+		md.Write(hash)           // and the input hash;
+		key := md.Sum(nil)[:32]  // and compute ChopMD-256(SHA-512),
+		// which is an indifferentiable MAC.
+
+		// Create an AES-CTR instance to use as a CSPRNG.
+		block, err := aes.NewCipher(key)
 		if err != nil {
 			return nil, nil, err
 		}
-		sig, err := boring.SignMarshalECDSA(b, hash)
-		if err != nil {
-			return nil, nil, err
+
+		// Create a CSPRNG that xors a stream of zeros with
+		// the output of the AES-CTR instance.
+		csprng := &cipher.StreamReader{
+			R: zeroReader,
+			S: cipher.NewCTR(block, []byte(aesIV)),
 		}
-		var r, s big.Int
-		var inner cryptobyte.String
-		input := cryptobyte.String(sig)
-		if !input.ReadASN1(&inner, asn1.SEQUENCE) ||
-			!input.Empty() ||
-			!inner.ReadASN1Integer(&r) ||
-			!inner.ReadASN1Integer(&s) ||
-			!inner.Empty() {
-			return nil, nil, errors.New("invalid ASN.1 from boringcrypto")
-		}
-		return &r, &s, nil
+
+		c := priv.PublicKey.Curve
+		return sign(priv, csprng, c, hash)
 	}
-	boring.UnreachableExceptTests()
-
-	// This implementation derives the nonce from an AES-CTR CSPRNG keyed by:
-	//
-	//    SHA2-512(priv.D || entropy || hash)[:32]
-	//
-	// The CSPRNG key is indifferentiable from a random oracle as shown in
-	// [Coron], the AES-CTR stream is indifferentiable from a random oracle
-	// under standard cryptographic assumptions (see [Larsson] for examples).
-	//
-	// [Coron]: https://cs.nyu.edu/~dodis/ps/merkle.pdf
-	// [Larsson]: https://web.archive.org/web/20040719170906/https://www.nada.kth.se/kurser/kth/2D1441/semteo03/lecturenotes/assump.pdf
-
-	// Get 256 bits of entropy from rand.
-	entropy := make([]byte, 32)
-	_, err = io.ReadFull(rand, entropy)
-	if err != nil {
-		return
-	}
-
-	// Initialize an SHA-512 hash context; digest...
-	md := sha512.New()
-	md.Write(priv.D.Bytes()) // the private key,
-	md.Write(entropy)        // the entropy,
-	md.Write(hash)           // and the input hash;
-	key := md.Sum(nil)[:32]  // and compute ChopMD-256(SHA-512),
-	// which is an indifferentiable MAC.
-
-	// Create an AES-CTR instance to use as a CSPRNG.
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// Create a CSPRNG that xors a stream of zeros with
-	// the output of the AES-CTR instance.
-	csprng := &cipher.StreamReader{
-		R: zeroReader,
-		S: cipher.NewCTR(block, []byte(aesIV)),
-	}
-
-	c := priv.PublicKey.Curve
-	return sign(priv, csprng, c, hash)
 }
 
 func signGeneric(priv *PrivateKey, csprng *cipher.StreamReader, c elliptic.Curve, hash []byte) (r, s *big.Int, err error) {
