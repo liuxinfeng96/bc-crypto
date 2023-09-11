@@ -6,7 +6,6 @@ package x509
 import (
 	"bytes"
 	"crypto/dsa"
-	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/rsa"
@@ -23,6 +22,7 @@ import (
 	"unicode/utf16"
 	"unicode/utf8"
 
+	"github.com/LiuXinfeng96/bc-crypto/ecdsa"
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 	"golang.org/x/crypto/cryptobyte"
 	cryptobyte_asn1 "golang.org/x/crypto/cryptobyte/asn1"
