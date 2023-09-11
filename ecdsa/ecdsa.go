@@ -402,6 +402,17 @@ func verifyGeneric(pub *PublicKey, c elliptic.Curve, hash []byte, r, s *big.Int)
 // VerifyASN1 verifies the ASN.1 encoded signature, sig, of hash using the
 // public key, pub. Its return value records whether the signature is valid.
 func VerifyASN1(pub *PublicKey, hash, sig []byte) bool {
+
+	switch pub.Curve {
+	case sm2.P256Sm2():
+		sm2pub := &sm2.PublicKey{
+			Curve: pub.Curve,
+			X:     pub.X,
+			Y:     pub.Y,
+		}
+		return sm2pub.Verify(hash, sig)
+	}
+
 	var (
 		r, s  = &big.Int{}, &big.Int{}
 		inner cryptobyte.String
@@ -413,16 +424,6 @@ func VerifyASN1(pub *PublicKey, hash, sig []byte) bool {
 		!inner.ReadASN1Integer(s) ||
 		!inner.Empty() {
 		return false
-	}
-
-	switch pub.Curve {
-	case sm2.P256Sm2():
-		sm2pub := &sm2.PublicKey{
-			Curve: pub.Curve,
-			X:     pub.X,
-			Y:     pub.Y,
-		}
-		return sm2.Verify(sm2pub, sig, r, s)
 	}
 
 	return Verify(pub, hash, r, s)
