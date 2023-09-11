@@ -258,10 +258,6 @@ func parsePublicKey(algo PublicKeyAlgorithm, keyData *publicKeyInfo) (any, error
 		}
 
 		curve, ok := namedCurve.(*secp256k1.BitCurve)
-		if !ok {
-			return nil, errors.New("x509: the curve type is not secp256k1")
-		}
-
 		var x, y *big.Int
 		if ok {
 			x, y = curve.Unmarshal(der)
