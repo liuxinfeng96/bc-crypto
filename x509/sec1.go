@@ -70,8 +70,8 @@ func marshalECPrivateKeyWithOID(key *ecdsa.PrivateKey, oid asn1.ObjectIdentifier
 	}
 
 	if oid.Equal(oidNamedCurveP256SM2) {
-		pubBytes = key.D.Bytes()
-		copy(privateKey[len(privateKey)-len(pubBytes):], pubBytes)
+		privateKeyBytes := key.D.Bytes()
+		copy(privateKey[len(privateKey)-len(privateKeyBytes):], privateKeyBytes)
 
 		return asn1.Marshal(ecPrivateKey{
 			Version:       1,
