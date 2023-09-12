@@ -109,7 +109,7 @@ func GenerateKey(algorithm AlgorithmCurve) (crypto.PrivateKey, error) {
 
 	switch algorithm {
 	case EC_Secp256k1:
-		return ecdsa.GenerateKey(secp256k1.S256(), rand.Reader)
+		return bcecdsa.GenerateKey(secp256k1.S256(), rand.Reader)
 	case EC_NISTP224:
 		return ecdsa.GenerateKey(elliptic.P224(), rand.Reader)
 	case EC_NISTP256:
@@ -119,7 +119,7 @@ func GenerateKey(algorithm AlgorithmCurve) (crypto.PrivateKey, error) {
 	case EC_NISTP521:
 		return ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
 	case EC_SM2:
-		return ecdsa.GenerateKey(sm2.P256Sm2(), rand.Reader)
+		return bcecdsa.GenerateKey(sm2.P256Sm2(), rand.Reader)
 	case RSA512:
 		return rsa.GenerateKey(rand.Reader, 512)
 	case RSA1024:
