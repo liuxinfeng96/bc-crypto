@@ -7,7 +7,7 @@ package nistec
 import (
 	"sync"
 
-	"github.com/LiuXinfeng96/bc-crypto/internal/nistec/fiat"
+	"github.com/liuxinfeng96/bc-crypto/internal/nistec/fiat"
 )
 
 var p224GG *[96]fiat.P224Element

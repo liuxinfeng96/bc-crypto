@@ -32,9 +32,9 @@ import (
 	_ "crypto/sha256"
 	_ "crypto/sha512"
 
-	local "github.com/LiuXinfeng96/bc-crypto"
-	"github.com/LiuXinfeng96/bc-crypto/ecdsa"
-	ec "github.com/LiuXinfeng96/bc-crypto/ecdsa"
+	local "github.com/liuxinfeng96/bc-crypto"
+	"github.com/liuxinfeng96/bc-crypto/ecdsa"
+	ec "github.com/liuxinfeng96/bc-crypto/ecdsa"
 	"github.com/tjfoc/gmsm/sm2"
 
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"

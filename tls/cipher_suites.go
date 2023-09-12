@@ -18,7 +18,7 @@ import (
 	"internal/cpu"
 	"runtime"
 
-	"github.com/LiuXinfeng96/bc-crypto/internal/boring"
+	"github.com/liuxinfeng96/bc-crypto/internal/boring"
 
 	"golang.org/x/crypto/chacha20poly1305"
 )

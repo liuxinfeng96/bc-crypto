@@ -7,7 +7,7 @@ package subtle_test
 import (
 	"testing"
 
-	"github.com/LiuXinfeng96/bc-crypto/internal/subtle"
+	"github.com/liuxinfeng96/bc-crypto/internal/subtle"
 )
 
 var a, b [100]byte

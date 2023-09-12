@@ -1,4 +1,4 @@
-module github.com/LiuXinfeng96/bc-crypto
+module github.com/liuxinfeng96/bc-crypto
 
 go 1.19
 

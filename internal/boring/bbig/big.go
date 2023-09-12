@@ -8,7 +8,7 @@ import (
 	"math/big"
 	"unsafe"
 
-	"github.com/LiuXinfeng96/bc-crypto/internal/boring"
+	"github.com/liuxinfeng96/bc-crypto/internal/boring"
 )
 
 func Enc(b *big.Int) boring.BigInt {

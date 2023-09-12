@@ -7,7 +7,7 @@ package edwards25519
 import (
 	"errors"
 
-	"github.com/LiuXinfeng96/bc-crypto/internal/edwards25519/field"
+	"github.com/liuxinfeng96/bc-crypto/internal/edwards25519/field"
 )
 
 // Point types.

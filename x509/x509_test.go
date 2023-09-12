@@ -33,7 +33,7 @@ import (
 	"testing"
 	"time"
 
-	local "github.com/LiuXinfeng96/bc-crypto"
+	local "github.com/liuxinfeng96/bc-crypto"
 )
 
 func TestParsePKCS1PrivateKey(t *testing.T) {

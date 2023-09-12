@@ -12,7 +12,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/LiuXinfeng96/bc-crypto/ecdsa"
+	"github.com/liuxinfeng96/bc-crypto/ecdsa"
 )
 
 // pkcs8 reflects an ASN.1, PKCS #8 PrivateKey. See

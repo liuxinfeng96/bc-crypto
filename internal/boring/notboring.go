@@ -12,7 +12,7 @@ import (
 	"crypto/cipher"
 	"hash"
 
-	"github.com/LiuXinfeng96/bc-crypto/internal/boring/sig"
+	"github.com/liuxinfeng96/bc-crypto/internal/boring/sig"
 )
 
 const available = false

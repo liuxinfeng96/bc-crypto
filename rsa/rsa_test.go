@@ -14,7 +14,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/LiuXinfeng96/bc-crypto/internal/boring"
+	"github.com/liuxinfeng96/bc-crypto/internal/boring"
 )
 
 func TestKeyGeneration(t *testing.T) {

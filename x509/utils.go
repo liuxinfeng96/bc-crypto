@@ -13,8 +13,8 @@ import (
 	"encoding/pem"
 	"errors"
 
-	bcecdsa "github.com/LiuXinfeng96/bc-crypto/ecdsa"
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
+	bcecdsa "github.com/liuxinfeng96/bc-crypto/ecdsa"
 	"github.com/tjfoc/gmsm/sm2"
 )
 

@@ -13,7 +13,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/LiuXinfeng96/bc-crypto/internal/nistec"
+	"github.com/liuxinfeng96/bc-crypto/internal/nistec"
 )
 
 func TestAllocations(t *testing.T) {

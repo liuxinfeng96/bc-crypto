@@ -22,8 +22,8 @@ import (
 	"unicode/utf16"
 	"unicode/utf8"
 
-	"github.com/LiuXinfeng96/bc-crypto/ecdsa"
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
+	"github.com/liuxinfeng96/bc-crypto/ecdsa"
 	"golang.org/x/crypto/cryptobyte"
 	cryptobyte_asn1 "golang.org/x/crypto/cryptobyte/asn1"
 )

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/LiuXinfeng96/bc-crypto/internal/edwards25519/field"
+	"github.com/liuxinfeng96/bc-crypto/internal/edwards25519/field"
 )
 
 var B = NewGeneratorPoint()

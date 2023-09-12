@@ -12,7 +12,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/LiuXinfeng96/bc-crypto/internal/nistec"
+	"github.com/liuxinfeng96/bc-crypto/internal/nistec"
 )
 
 func TestP256OrdInverse(t *testing.T) {
