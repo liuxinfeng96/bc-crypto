@@ -887,6 +887,8 @@ func checkSignature(algo SignatureAlgorithm, signed, signature []byte, publicKey
 			return InsecureAlgorithmError(algo)
 		}
 		fallthrough
+	case local.SM3:
+		break
 	default:
 		if !hashType.Available() {
 			return ErrUnsupportedAlgorithm
