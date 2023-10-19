@@ -34,7 +34,6 @@ import (
 
 	local "github.com/liuxinfeng96/bc-crypto"
 	"github.com/liuxinfeng96/bc-crypto/ecdsa"
-	ec "github.com/liuxinfeng96/bc-crypto/ecdsa"
 	"github.com/tjfoc/gmsm/sm2"
 
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
@@ -88,7 +87,7 @@ func marshalPublicKey(pub any) (publicKeyBytes []byte, publicKeyAlgorithm pkix.A
 		// This is a NULL parameters value which is required by
 		// RFC 3279, Section 2.3.1.
 		publicKeyAlgorithm.Parameters = asn1.NullRawValue
-	case *ec.PublicKey:
+	case *ecdsa.PublicKey:
 		oid, ok := oidFromNamedCurve(pub.Curve)
 		if !ok {
 			return nil, pkix.AlgorithmIdentifier{}, errors.New("x509: unsupported elliptic curve")
@@ -913,7 +912,7 @@ func checkSignature(algo SignatureAlgorithm, signed, signature []byte, publicKey
 			return signaturePublicKeyAlgoMismatchError(pubKeyAlgo, pub)
 		}
 
-		if !ec.VerifyASN1(pub, signed, signature) {
+		if !ecdsa.VerifyASN1(pub, signed, signature) {
 			return errors.New("x509: ECDSA verification failure")
 		}
 
