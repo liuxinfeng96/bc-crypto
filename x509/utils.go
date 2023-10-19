@@ -105,6 +105,33 @@ const (
 	RSA3072
 )
 
+func (a AlgorithmCurve) String() string {
+	switch a {
+	case EC_Secp256k1:
+		return "ECC_Secp256k1"
+	case EC_NISTP224:
+		return "ECC_NISTP224"
+	case EC_NISTP256:
+		return "ECC_NISTP256"
+	case EC_NISTP384:
+		return "ECC_NISTP384"
+	case EC_NISTP521:
+		return "ECC_NISTP521"
+	case EC_SM2:
+		return "SM2"
+	case RSA512:
+		return "RSA512"
+	case RSA1024:
+		return "RSA1024"
+	case RSA2048:
+		return "RSA2048"
+	case RSA3072:
+		return "RSA3072"
+	default:
+		return "unknown"
+	}
+}
+
 func GenerateKey(algorithm AlgorithmCurve) (crypto.PrivateKey, error) {
 
 	switch algorithm {
