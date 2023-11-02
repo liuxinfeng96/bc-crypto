@@ -1,6 +1,7 @@
 package x509
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -105,6 +106,19 @@ const (
 	RSA3072
 )
 
+var AlgorithmCurveMap = map[string]AlgorithmCurve{
+	"EC_Secp256k1": EC_Secp256k1,
+	"EC_NISTP224":  EC_NISTP224,
+	"EC_NISTP256":  EC_NISTP256,
+	"EC_NISTP384":  EC_NISTP384,
+	"EC_NISTP521":  EC_NISTP521,
+	"EC_SM2":       EC_SM2,
+	"RSA512":       RSA512,
+	"RSA1024":      RSA1024,
+	"RSA2048":      RSA2048,
+	"RSA3072":      RSA3072,
+}
+
 func (a AlgorithmCurve) String() string {
 	switch a {
 	case EC_Secp256k1:
@@ -158,6 +172,131 @@ func GenerateKey(algorithm AlgorithmCurve) (crypto.PrivateKey, error) {
 
 	default:
 		return nil, errors.New("the public key algorithm curve is unknown")
+	}
+}
+
+func MarshalPrivateKeyToPEM(key crypto.PrivateKey) ([]byte, error) {
+	switch key := key.(type) {
+	case *bcecdsa.PrivateKey:
+
+		skDer, err := MarshalECPrivateKey(key)
+		if err != nil {
+			return nil, err
+		}
+
+		skBlock := &pem.Block{
+			Type:  "EC PRIVATE KEY",
+			Bytes: skDer,
+		}
+
+		skBuf := new(bytes.Buffer)
+		if err = pem.Encode(skBuf, skBlock); err != nil {
+			return nil, err
+		}
+
+		return skBuf.Bytes(), nil
+
+	case *rsa.PrivateKey:
+
+		skDer, err := x509.MarshalPKCS8PrivateKey(key)
+		if err != nil {
+			return nil, err
+		}
+
+		skBlock := &pem.Block{
+			Type:  "PRIVATE KEY",
+			Bytes: skDer,
+		}
+
+		skBuf := new(bytes.Buffer)
+		if err = pem.Encode(skBuf, skBlock); err != nil {
+			return nil, err
+		}
+
+		return skBuf.Bytes(), nil
+
+	case *ecdsa.PrivateKey:
+
+		skDer, err := x509.MarshalECPrivateKey(key)
+		if err != nil {
+			return nil, err
+		}
+
+		skBlock := &pem.Block{
+			Type:  "PRIVATE KEY",
+			Bytes: skDer,
+		}
+
+		skBuf := new(bytes.Buffer)
+		if err = pem.Encode(skBuf, skBlock); err != nil {
+			return nil, err
+		}
+
+		return skBuf.Bytes(), nil
+
+	default:
+		return nil, errors.New("unknown private key type")
+	}
+}
+
+func MarshalPublicKeyToPEM(pub crypto.PublicKey) ([]byte, error) {
+	switch pub := pub.(type) {
+	case *bcecdsa.PublicKey:
+
+		pkDer, err := MarshalPKIXPublicKey(pub)
+		if err != nil {
+			return nil, err
+		}
+
+		pkBlock := &pem.Block{
+			Type:  "PUBLIC KEY",
+			Bytes: pkDer,
+		}
+
+		pkBuf := new(bytes.Buffer)
+		if err = pem.Encode(pkBuf, pkBlock); err != nil {
+			return nil, err
+		}
+
+		return pkBuf.Bytes(), nil
+
+	case *rsa.PublicKey:
+
+		pkDer := x509.MarshalPKCS1PublicKey(pub)
+
+		pkBlock := &pem.Block{
+			Type:  "PUBLIC KEY",
+			Bytes: pkDer,
+		}
+
+		pkBuf := new(bytes.Buffer)
+		if err := pem.Encode(pkBuf, pkBlock); err != nil {
+			return nil, err
+		}
+
+		return pkBuf.Bytes(), nil
+
+	case *ecdsa.PublicKey:
+
+		pkDer, err := x509.MarshalPKIXPublicKey(pub)
+		if err != nil {
+			return nil, err
+		}
+
+		pkBlock := &pem.Block{
+			Type:  "PUBLIC KEY",
+			Bytes: pkDer,
+		}
+
+		pkBuf := new(bytes.Buffer)
+		if err = pem.Encode(pkBuf, pkBlock); err != nil {
+			return nil, err
+		}
+
+		return pkBuf.Bytes(), nil
+
+	default:
+		return nil, errors.New("unknown public key type")
 	}
 }
 
