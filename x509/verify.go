@@ -13,7 +13,6 @@ import (
 	"net"
 	"net/url"
 	"reflect"
-	"runtime"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -706,13 +705,6 @@ func (c *Certificate) isValid(certType int, currentChain []*Certificate, opts *V
 		}
 	}
 
-	if !boringAllowCert(c) {
-		// IncompatibleUsage is not quite right here,
-		// but it's also the "no chains found" error
-		// and is close enough.
-		return CertificateInvalidError{c, IncompatibleUsage, ""}
-	}
-
 	return nil
 }
 
@@ -763,26 +755,8 @@ func (c *Certificate) Verify(opts VerifyOptions) (chains [][]*Certificate, err e
 	}
 
 	// Use platform verifiers, where available, if Roots is from SystemCertPool.
-	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" || runtime.GOOS == "ios" {
-		if opts.Roots == nil {
-			return c.systemVerify(&opts)
-		}
-		if opts.Roots != nil && opts.Roots.systemPool {
-			platformChains, err := c.systemVerify(&opts)
-			// If the platform verifier succeeded, or there are no additional
-			// roots, return the platform verifier result. Otherwise, continue
-			// with the Go verifier.
-			if err == nil || opts.Roots.len() == 0 {
-				return platformChains, err
-			}
-		}
-	}
-
 	if opts.Roots == nil {
-		opts.Roots = systemRootsPool()
-		if opts.Roots == nil {
-			return nil, SystemRootsError{systemRootsErr}
-		}
+		return nil, fmt.Errorf("trusted root certificate pool is empty")
 	}
 
 	err = c.isValid(leafCertificate, nil, &opts)
