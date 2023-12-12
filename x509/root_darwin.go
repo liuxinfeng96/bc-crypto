@@ -5,9 +5,10 @@
 package x509
 
 import (
-	macOS "crypto/x509/internal/macos"
 	"errors"
 	"fmt"
+
+	macOS "github.com/liuxinfeng96/bc-crypto/x509/internal/macos"
 )
 
 func (c *Certificate) systemVerify(opts *VerifyOptions) (chains [][]*Certificate, err error) {
