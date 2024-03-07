@@ -7,10 +7,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/sha256"
 	"crypto/x509"
-	"crypto/x509/pkix"
-	"encoding/asn1"
 	"encoding/pem"
 	"errors"
 
@@ -320,26 +317,23 @@ func ParseCertificateFromPEM(certBytes []byte) (*Certificate, error) {
 	return cert, nil
 }
 
-type subjectPublicKeyInfo struct {
-	Algorithm        pkix.AlgorithmIdentifier
-	SubjectPublicKey asn1.BitString
-}
-
 func ComputeSKI(pub interface{}) ([]byte, error) {
-	encodedPub, err := MarshalPKIXPublicKey(pub)
+
+	var publicKeyBytes []byte
+	var err error
+
+	if publicKeyBytes, _, err = marshalPublicKey(pub); err != nil {
+		return nil, err
+	}
+
+	hashFunc, _, err := signingParamsForPublicKey(pub, UnknownSignatureAlgorithm)
 	if err != nil {
 		return nil, err
 	}
 
-	var subPKI subjectPublicKeyInfo
-	_, err = asn1.Unmarshal(encodedPub, &subPKI)
-	if err != nil {
-		return nil, err
-	}
+	hash := hashFunc.New()
 
-	hash := sha256.New()
-
-	hash.Write(subPKI.SubjectPublicKey.Bytes)
+	hash.Write(publicKeyBytes)
 
 	pubHash := hash.Sum(nil)
 
