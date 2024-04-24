@@ -12,6 +12,7 @@ import (
 	"errors"
 
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
+	local "github.com/liuxinfeng96/bc-crypto"
 	bcecdsa "github.com/liuxinfeng96/bc-crypto/ecdsa"
 	"github.com/tjfoc/gmsm/sm2"
 )
@@ -397,4 +398,26 @@ func GetKeyUsageAndExtKeyUsage(isCa bool) (KeyUsage, []ExtKeyUsage) {
 		extKeyUsage = []ExtKeyUsage{ExtKeyUsageClientAuth, ExtKeyUsageServerAuth}
 	}
 	return keyUsage, extKeyUsage
+}
+
+func GetHashTypeBySignatureAlgo(signatureAlgo SignatureAlgorithm) (local.Hash, error) {
+
+	for i := 0; i < len(signatureAlgorithmDetails); i++ {
+		if signatureAlgo == signatureAlgorithmDetails[i].algo {
+			return signatureAlgorithmDetails[i].hash, nil
+		}
+	}
+
+	return local.Hash(0), errors.New("unknown signature algorithm")
+}
+
+func GetHashTypeBySignatureAlgoString(signatureAlgoStr string) (local.Hash, error) {
+
+	for i := 0; i < len(signatureAlgorithmDetails); i++ {
+		if signatureAlgoStr == signatureAlgorithmDetails[i].name {
+			return signatureAlgorithmDetails[i].hash, nil
+		}
+	}
+
+	return local.Hash(0), errors.New("unknown signature algorithm")
 }
