@@ -15,6 +15,7 @@ import (
 	local "github.com/liuxinfeng96/bc-crypto"
 	bcecdsa "github.com/liuxinfeng96/bc-crypto/ecdsa"
 	"github.com/tjfoc/gmsm/sm2"
+	smx509 "github.com/tjfoc/gmsm/x509"
 )
 
 func ParsePrivateKeyFromDER(der []byte) (crypto.PrivateKey, error) {
@@ -28,6 +29,10 @@ func ParsePrivateKeyFromDER(der []byte) (crypto.PrivateKey, error) {
 	}
 
 	if key, err := x509.ParsePKCS8PrivateKey(der); err == nil {
+		return key, nil
+	}
+
+	if key, err := smx509.ParsePKCS8UnecryptedPrivateKey(der); err == nil {
 		return key, nil
 	}
 
