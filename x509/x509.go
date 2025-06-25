@@ -930,6 +930,22 @@ func checkSignature(algo SignatureAlgorithm, signed, signature []byte, publicKey
 		}
 
 		return
+	case *sm2.PublicKey:
+		if pubKeyAlgo != ECDSA {
+			return signaturePublicKeyAlgoMismatchError(pubKeyAlgo, pub)
+		}
+
+		sm2pub := &sm2.PublicKey{
+			Curve: pub.Curve,
+			X:     pub.X,
+			Y:     pub.Y,
+		}
+
+		if !sm2pub.Verify(signed, signature) {
+			return errors.New("x509: ECDSA verification failure")
+		}
+
+		return
 	case ed25519.PublicKey:
 		if pubKeyAlgo != Ed25519 {
 			return signaturePublicKeyAlgoMismatchError(pubKeyAlgo, pub)
