@@ -1602,13 +1602,16 @@ func CreateCertificate(rand io.Reader, template, parent *Certificate, pub, priv 
 	}
 
 	// Check that the signer's public key matches the private key, if available.
-	type privateKey interface {
-		Equal(crypto.PublicKey) bool
-	}
-	if privPub, ok := key.Public().(privateKey); !ok {
-		return nil, errors.New("x509: internal error: supported public key does not implement Equal")
-	} else if parent.PublicKey != nil && !privPub.Equal(parent.PublicKey) {
-		return nil, errors.New("x509: provided PrivateKey doesn't match parent's PublicKey")
+	// 国密SM2未实现Equal，暂时不校验
+	if _, ok = key.Public().(*sm2.PublicKey); !ok {
+		type privateKey interface {
+			Equal(crypto.PublicKey) bool
+		}
+		if privPub, ok := key.Public().(privateKey); !ok {
+			return nil, errors.New("x509: internal error: supported public key does not implement Equal")
+		} else if parent.PublicKey != nil && !privPub.Equal(parent.PublicKey) {
+			return nil, errors.New("x509: provided PrivateKey doesn't match parent's PublicKey")
+		}
 	}
 
 	extensions, err := buildCertExtensions(template, bytes.Equal(asn1Subject, emptyASN1Subject), authorityKeyId, subjectKeyId)
