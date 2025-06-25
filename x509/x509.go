@@ -1441,6 +1441,7 @@ func signingParamsForPublicKey(pub any, requestedSigAlgo SignatureAlgorithm) (ha
 		pubType = Ed25519
 		sigAlgo.Algorithm = oidSignatureEd25519
 	case *sm2.PublicKey:
+		pubType = ECDSA
 		hashFunc = local.SM3
 		sigAlgo.Algorithm = oidSignatureSM2WithSM3
 	default:
