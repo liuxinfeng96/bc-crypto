@@ -115,6 +115,19 @@ func marshalPublicKey(pub any) (publicKeyBytes []byte, publicKeyAlgorithm pkix.A
 			return
 		}
 		publicKeyAlgorithm.Parameters.FullBytes = paramBytes
+	case *sm2.PublicKey:
+		publicKeyBytes = elliptic.Marshal(pub.Curve, pub.X, pub.Y)
+		oid, ok := oidFromNamedCurve(pub.Curve)
+		if !ok {
+			return nil, pkix.AlgorithmIdentifier{}, errors.New("x509: unsupported SM2 curve")
+		}
+		publicKeyAlgorithm.Algorithm = oidPublicKeyECDSA
+		var paramBytes []byte
+		paramBytes, err = asn1.Marshal(oid)
+		if err != nil {
+			return
+		}
+		publicKeyAlgorithm.Parameters.FullBytes = paramBytes
 	case ed25519.PublicKey:
 		publicKeyBytes = pub
 		publicKeyAlgorithm.Algorithm = oidPublicKeyEd25519
@@ -1427,7 +1440,9 @@ func signingParamsForPublicKey(pub any, requestedSigAlgo SignatureAlgorithm) (ha
 	case ed25519.PublicKey:
 		pubType = Ed25519
 		sigAlgo.Algorithm = oidSignatureEd25519
-
+	case *sm2.PublicKey:
+		hashFunc = local.SM3
+		sigAlgo.Algorithm = oidSignatureSM2WithSM3
 	default:
 		err = errors.New("x509: only RSA, ECDSA and Ed25519 keys supported")
 	}
