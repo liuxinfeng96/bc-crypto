@@ -5,13 +5,13 @@
 package x509
 
 import (
+	"crypto/ecdh"
+	"crypto/ecdsa"
 	"crypto/elliptic"
 	"encoding/asn1"
 	"errors"
 	"fmt"
 	"math/big"
-
-	"github.com/liuxinfeng96/bc-crypto/ecdsa"
 
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 )
@@ -44,7 +44,7 @@ func ParseECPrivateKey(der []byte) (*ecdsa.PrivateKey, error) {
 //
 // This kind of key is commonly encoded in PEM blocks of type "EC PRIVATE KEY".
 // For a more flexible key format which is not EC specific, use
-// MarshalPKCS8PrivateKey.
+// [MarshalPKCS8PrivateKey].
 func MarshalECPrivateKey(key *ecdsa.PrivateKey) ([]byte, error) {
 	oid, ok := oidFromNamedCurve(key.Curve)
 	if !ok {
@@ -54,14 +54,14 @@ func MarshalECPrivateKey(key *ecdsa.PrivateKey) ([]byte, error) {
 	return marshalECPrivateKeyWithOID(key, oid)
 }
 
-// marshalECPrivateKey marshals an EC private key into ASN.1, DER format and
+// marshalECPrivateKeyWithOID marshals an EC private key into ASN.1, DER format and
 // sets the curve ID to the given OID, or omits it if OID is nil.
 func marshalECPrivateKeyWithOID(key *ecdsa.PrivateKey, oid asn1.ObjectIdentifier) ([]byte, error) {
 	if !key.Curve.IsOnCurve(key.X, key.Y) {
 		return nil, errors.New("invalid elliptic key public key")
 	}
 	privateKey := make([]byte, (key.Curve.Params().N.BitLen()+7)/8)
-
+	// Modify----------------------------------------------------------
 	var pubBytes []byte
 
 	if oid.Equal(oidNamedCurveS256) {
@@ -81,12 +81,22 @@ func marshalECPrivateKeyWithOID(key *ecdsa.PrivateKey, oid asn1.ObjectIdentifier
 			PublicKey:     asn1.BitString{Bytes: pubBytes},
 		})
 	}
-
+	// Modify----------------------------------------------------------
 	return asn1.Marshal(ecPrivateKey{
 		Version:       1,
 		PrivateKey:    key.D.FillBytes(privateKey),
 		NamedCurveOID: oid,
 		PublicKey:     asn1.BitString{Bytes: pubBytes},
+	})
+}
+
+// marshalECDHPrivateKey marshals an EC private key into ASN.1, DER format
+// suitable for NIST curves.
+func marshalECDHPrivateKey(key *ecdh.PrivateKey) ([]byte, error) {
+	return asn1.Marshal(ecPrivateKey{
+		Version:    1,
+		PrivateKey: key.Bytes(),
+		PublicKey:  asn1.BitString{Bytes: key.PublicKey().Bytes()},
 	})
 }
 

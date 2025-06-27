@@ -1,11 +1,14 @@
 // Copyright 2021 The Go Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
+
 package x509
 
 import (
 	"bytes"
 	"crypto/dsa"
+	"crypto/ecdh"
+	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/rsa"
@@ -13,6 +16,10 @@ import (
 	"encoding/asn1"
 	"errors"
 	"fmt"
+
+	// Original
+	//"internal/godebug"
+
 	"math/big"
 	"net"
 	"net/url"
@@ -23,7 +30,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
-	"github.com/liuxinfeng96/bc-crypto/ecdsa"
 	"golang.org/x/crypto/cryptobyte"
 	cryptobyte_asn1 "golang.org/x/crypto/cryptobyte/asn1"
 )
@@ -213,13 +219,15 @@ func parseExtension(der cryptobyte.String) (pkix.Extension, error) {
 	return ext, nil
 }
 
-func parsePublicKey(algo PublicKeyAlgorithm, keyData *publicKeyInfo) (any, error) {
+func parsePublicKey(keyData *publicKeyInfo) (any, error) {
+	oid := keyData.Algorithm.Algorithm
+	params := keyData.Algorithm.Parameters
 	der := cryptobyte.String(keyData.PublicKey.RightAlign())
-	switch algo {
-	case RSA:
+	switch {
+	case oid.Equal(oidPublicKeyRSA):
 		// RSA public keys must have a NULL in the parameters.
 		// See RFC 3279, Section 2.3.1.
-		if !bytes.Equal(keyData.Algorithm.Parameters.FullBytes, asn1.NullBytes) {
+		if !bytes.Equal(params.FullBytes, asn1.NullBytes) {
 			return nil, errors.New("x509: RSA key missing NULL parameters")
 		}
 
@@ -246,8 +254,8 @@ func parsePublicKey(algo PublicKeyAlgorithm, keyData *publicKeyInfo) (any, error
 			N: p.N,
 		}
 		return pub, nil
-	case ECDSA:
-		paramsDer := cryptobyte.String(keyData.Algorithm.Parameters.FullBytes)
+	case oid.Equal(oidPublicKeyECDSA):
+		paramsDer := cryptobyte.String(params.FullBytes)
 		namedCurveOID := new(asn1.ObjectIdentifier)
 		if !paramsDer.ReadASN1ObjectIdentifier(namedCurveOID) {
 			return nil, errors.New("x509: invalid ECDSA parameters")
@@ -256,7 +264,13 @@ func parsePublicKey(algo PublicKeyAlgorithm, keyData *publicKeyInfo) (any, error
 		if namedCurve == nil {
 			return nil, errors.New("x509: unsupported elliptic curve")
 		}
+		// Original
+		// x, y := elliptic.Unmarshal(namedCurve, der)
+		// if x == nil {
+		// 	return nil, errors.New("x509: failed to unmarshal elliptic curve point")
+		// }
 
+		// Modify ------------------------------------------------------------------
 		curve, ok := namedCurve.(*secp256k1.BitCurve)
 		var x, y *big.Int
 		if ok {
@@ -264,27 +278,32 @@ func parsePublicKey(algo PublicKeyAlgorithm, keyData *publicKeyInfo) (any, error
 		} else {
 			x, y = elliptic.Unmarshal(namedCurve, der)
 		}
+		// Modify ------------------------------------------------------------------
 
-		if x == nil {
-			return nil, errors.New("x509: failed to unmarshal elliptic curve point")
-		}
 		pub := &ecdsa.PublicKey{
 			Curve: namedCurve,
 			X:     x,
 			Y:     y,
 		}
 		return pub, nil
-	case Ed25519:
+	case oid.Equal(oidPublicKeyEd25519):
 		// RFC 8410, Section 3
 		// > For all of the OIDs, the parameters MUST be absent.
-		if len(keyData.Algorithm.Parameters.FullBytes) != 0 {
+		if len(params.FullBytes) != 0 {
 			return nil, errors.New("x509: Ed25519 key encoded with illegal parameters")
 		}
 		if len(der) != ed25519.PublicKeySize {
 			return nil, errors.New("x509: wrong Ed25519 public key size")
 		}
 		return ed25519.PublicKey(der), nil
-	case DSA:
+	case oid.Equal(oidPublicKeyX25519):
+		// RFC 8410, Section 3
+		// > For all of the OIDs, the parameters MUST be absent.
+		if len(params.FullBytes) != 0 {
+			return nil, errors.New("x509: X25519 key encoded with illegal parameters")
+		}
+		return ecdh.X25519().NewPublicKey(der)
+	case oid.Equal(oidPublicKeyDSA):
 		y := new(big.Int)
 		if !der.ReadASN1Integer(y) {
 			return nil, errors.New("x509: invalid DSA public key")
@@ -297,7 +316,7 @@ func parsePublicKey(algo PublicKeyAlgorithm, keyData *publicKeyInfo) (any, error
 				G: new(big.Int),
 			},
 		}
-		paramsDer := cryptobyte.String(keyData.Algorithm.Parameters.FullBytes)
+		paramsDer := cryptobyte.String(params.FullBytes)
 		if !paramsDer.ReadASN1(&paramsDer, cryptobyte_asn1.SEQUENCE) ||
 			!paramsDer.ReadASN1Integer(pub.Parameters.P) ||
 			!paramsDer.ReadASN1Integer(pub.Parameters.Q) ||
@@ -310,7 +329,7 @@ func parsePublicKey(algo PublicKeyAlgorithm, keyData *publicKeyInfo) (any, error
 		}
 		return pub, nil
 	default:
-		return nil, nil
+		return nil, errors.New("x509: unknown public key algorithm")
 	}
 }
 
@@ -332,17 +351,17 @@ func parseKeyUsageExtension(der cryptobyte.String) (KeyUsage, error) {
 func parseBasicConstraintsExtension(der cryptobyte.String) (bool, int, error) {
 	var isCA bool
 	if !der.ReadASN1(&der, cryptobyte_asn1.SEQUENCE) {
-		return false, 0, errors.New("x509: invalid basic constraints a")
+		return false, 0, errors.New("x509: invalid basic constraints")
 	}
 	if der.PeekASN1Tag(cryptobyte_asn1.BOOLEAN) {
 		if !der.ReadASN1Boolean(&isCA) {
-			return false, 0, errors.New("x509: invalid basic constraints b")
+			return false, 0, errors.New("x509: invalid basic constraints")
 		}
 	}
 	maxPathLen := -1
-	if !der.Empty() && der.PeekASN1Tag(cryptobyte_asn1.INTEGER) {
+	if der.PeekASN1Tag(cryptobyte_asn1.INTEGER) {
 		if !der.ReadASN1Integer(&maxPathLen) {
-			return false, 0, errors.New("x509: invalid basic constraints c")
+			return false, 0, errors.New("x509: invalid basic constraints")
 		}
 	}
 
@@ -413,6 +432,26 @@ func parseSANExtension(der cryptobyte.String) (dnsNames, emailAddresses []string
 	return
 }
 
+func parseAuthorityKeyIdentifier(e pkix.Extension) ([]byte, error) {
+	// RFC 5280, Section 4.2.1.1
+	if e.Critical {
+		// Conforming CAs MUST mark this extension as non-critical
+		return nil, errors.New("x509: authority key identifier incorrectly marked critical")
+	}
+	val := cryptobyte.String(e.Value)
+	var akid cryptobyte.String
+	if !val.ReadASN1(&akid, cryptobyte_asn1.SEQUENCE) {
+		return nil, errors.New("x509: invalid authority key identifier")
+	}
+	if akid.PeekASN1Tag(cryptobyte_asn1.Tag(0).ContextSpecific()) {
+		if !akid.ReadASN1(&akid, cryptobyte_asn1.Tag(0).ContextSpecific()) {
+			return nil, errors.New("x509: invalid authority key identifier")
+		}
+		return akid, nil
+	}
+	return nil, nil
+}
+
 func parseExtKeyUsageExtension(der cryptobyte.String) ([]ExtKeyUsage, []asn1.ObjectIdentifier, error) {
 	var extKeyUsages []ExtKeyUsage
 	var unknownUsages []asn1.ObjectIdentifier
@@ -433,23 +472,28 @@ func parseExtKeyUsageExtension(der cryptobyte.String) ([]ExtKeyUsage, []asn1.Obj
 	return extKeyUsages, unknownUsages, nil
 }
 
-func parseCertificatePoliciesExtension(der cryptobyte.String) ([]asn1.ObjectIdentifier, error) {
-	var oids []asn1.ObjectIdentifier
+func parseCertificatePoliciesExtension(der cryptobyte.String) ([]OID, error) {
+	var oids []OID
+	seenOIDs := map[string]bool{}
 	if !der.ReadASN1(&der, cryptobyte_asn1.SEQUENCE) {
 		return nil, errors.New("x509: invalid certificate policies")
 	}
 	for !der.Empty() {
 		var cp cryptobyte.String
-		if !der.ReadASN1(&cp, cryptobyte_asn1.SEQUENCE) {
+		var OIDBytes cryptobyte.String
+		if !der.ReadASN1(&cp, cryptobyte_asn1.SEQUENCE) || !cp.ReadASN1(&OIDBytes, cryptobyte_asn1.OBJECT_IDENTIFIER) {
 			return nil, errors.New("x509: invalid certificate policies")
 		}
-		var oid asn1.ObjectIdentifier
-		if !cp.ReadASN1ObjectIdentifier(&oid) {
+		if seenOIDs[string(OIDBytes)] {
+			return nil, errors.New("x509: invalid certificate policies")
+		}
+		seenOIDs[string(OIDBytes)] = true
+		oid, ok := newOIDFromDER(OIDBytes)
+		if !ok {
 			return nil, errors.New("x509: invalid certificate policies")
 		}
 		oids = append(oids, oid)
 	}
-
 	return oids, nil
 }
 
@@ -720,25 +764,49 @@ func processExtensions(out *Certificate) error {
 				}
 
 			case 35:
-				// RFC 5280, 4.2.1.1
-				val := cryptobyte.String(e.Value)
-				var akid cryptobyte.String
-				if !val.ReadASN1(&akid, cryptobyte_asn1.SEQUENCE) {
-					return errors.New("x509: invalid authority key identifier")
+				out.AuthorityKeyId, err = parseAuthorityKeyIdentifier(e)
+				if err != nil {
+					return err
 				}
-				if akid.PeekASN1Tag(cryptobyte_asn1.Tag(0).ContextSpecific()) {
-					if !akid.ReadASN1(&akid, cryptobyte_asn1.Tag(0).ContextSpecific()) {
-						return errors.New("x509: invalid authority key identifier")
+			case 36:
+				val := cryptobyte.String(e.Value)
+				if !val.ReadASN1(&val, cryptobyte_asn1.SEQUENCE) {
+					return errors.New("x509: invalid policy constraints extension")
+				}
+				if val.PeekASN1Tag(cryptobyte_asn1.Tag(0).ContextSpecific()) {
+					var v int64
+					if !val.ReadASN1Int64WithTag(&v, cryptobyte_asn1.Tag(0).ContextSpecific()) {
+						return errors.New("x509: invalid policy constraints extension")
 					}
-					out.AuthorityKeyId = akid
+					out.RequireExplicitPolicy = int(v)
+					// Check for overflow.
+					if int64(out.RequireExplicitPolicy) != v {
+						return errors.New("x509: policy constraints requireExplicitPolicy field overflows int")
+					}
+					out.RequireExplicitPolicyZero = out.RequireExplicitPolicy == 0
+				}
+				if val.PeekASN1Tag(cryptobyte_asn1.Tag(1).ContextSpecific()) {
+					var v int64
+					if !val.ReadASN1Int64WithTag(&v, cryptobyte_asn1.Tag(1).ContextSpecific()) {
+						return errors.New("x509: invalid policy constraints extension")
+					}
+					out.InhibitPolicyMapping = int(v)
+					// Check for overflow.
+					if int64(out.InhibitPolicyMapping) != v {
+						return errors.New("x509: policy constraints inhibitPolicyMapping field overflows int")
+					}
+					out.InhibitPolicyMappingZero = out.InhibitPolicyMapping == 0
 				}
 			case 37:
 				out.ExtKeyUsage, out.UnknownExtKeyUsage, err = parseExtKeyUsageExtension(e.Value)
 				if err != nil {
 					return err
 				}
-			case 14:
-				// RFC 5280, 4.2.1.2
+			case 14: // RFC 5280, 4.2.1.2
+				if e.Critical {
+					// Conforming CAs MUST mark this extension as non-critical
+					return errors.New("x509: subject key identifier incorrectly marked critical")
+				}
 				val := cryptobyte.String(e.Value)
 				var skid cryptobyte.String
 				if !val.ReadASN1(&skid, cryptobyte_asn1.OCTET_STRING) {
@@ -746,16 +814,47 @@ func processExtensions(out *Certificate) error {
 				}
 				out.SubjectKeyId = skid
 			case 32:
-				out.PolicyIdentifiers, err = parseCertificatePoliciesExtension(e.Value)
+				out.Policies, err = parseCertificatePoliciesExtension(e.Value)
 				if err != nil {
 					return err
 				}
+				out.PolicyIdentifiers = make([]asn1.ObjectIdentifier, 0, len(out.Policies))
+				for _, oid := range out.Policies {
+					if oid, ok := oid.toASN1OID(); ok {
+						out.PolicyIdentifiers = append(out.PolicyIdentifiers, oid)
+					}
+				}
+			case 33:
+				val := cryptobyte.String(e.Value)
+				if !val.ReadASN1(&val, cryptobyte_asn1.SEQUENCE) {
+					return errors.New("x509: invalid policy mappings extension")
+				}
+				for !val.Empty() {
+					var s cryptobyte.String
+					var issuer, subject cryptobyte.String
+					if !val.ReadASN1(&s, cryptobyte_asn1.SEQUENCE) ||
+						!s.ReadASN1(&issuer, cryptobyte_asn1.OBJECT_IDENTIFIER) ||
+						!s.ReadASN1(&subject, cryptobyte_asn1.OBJECT_IDENTIFIER) {
+						return errors.New("x509: invalid policy mappings extension")
+					}
+					out.PolicyMappings = append(out.PolicyMappings, PolicyMapping{OID{issuer}, OID{subject}})
+				}
+			case 54:
+				val := cryptobyte.String(e.Value)
+				if !val.ReadASN1Integer(&out.InhibitAnyPolicy) {
+					return errors.New("x509: invalid inhibit any policy extension")
+				}
+				out.InhibitAnyPolicyZero = out.InhibitAnyPolicy == 0
 			default:
 				// Unknown extensions are recorded if critical.
 				unhandled = true
 			}
 		} else if e.Id.Equal(oidExtensionAuthorityInfoAccess) {
 			// RFC 5280 4.2.2.1: Authority Information Access
+			if e.Critical {
+				// Conforming CAs MUST mark this extension as non-critical
+				return errors.New("x509: authority info access incorrectly marked critical")
+			}
 			val := cryptobyte.String(e.Value)
 			if !val.ReadASN1(&val, cryptobyte_asn1.SEQUENCE) {
 				return errors.New("x509: invalid authority info access")
@@ -794,6 +893,9 @@ func processExtensions(out *Certificate) error {
 
 	return nil
 }
+
+// Original
+// var x509negativeserial = godebug.New("x509negativeserial")
 
 func parseCertificate(der []byte) (*Certificate, error) {
 	cert := &Certificate{}
@@ -838,11 +940,16 @@ func parseCertificate(der []byte) (*Certificate, error) {
 	if !tbs.ReadASN1Integer(serial) {
 		return nil, errors.New("x509: malformed serial number")
 	}
-	// we ignore the presence of negative serial numbers because
-	// of their prevalence, despite them being invalid
-	// TODO(rolandshoemaker): revisit this decision, there are currently
-	// only 10 trusted certificates with negative serial numbers
-	// according to censys.io.
+
+	// Original
+	// if serial.Sign() == -1 {
+	// 	if x509negativeserial.Value() != "1" {
+	// 		return nil, errors.New("x509: negative serial number")
+	// 	} else {
+	// 		x509negativeserial.IncNonDefault()
+	// 	}
+	// }
+
 	cert.SerialNumber = serial
 
 	var sigAISeq cryptobyte.String
@@ -917,12 +1024,14 @@ func parseCertificate(der []byte) (*Certificate, error) {
 	if !spki.ReadASN1BitString(&spk) {
 		return nil, errors.New("x509: malformed subjectPublicKey")
 	}
-	cert.PublicKey, err = parsePublicKey(cert.PublicKeyAlgorithm, &publicKeyInfo{
-		Algorithm: pkAI,
-		PublicKey: spk,
-	})
-	if err != nil {
-		return nil, err
+	if cert.PublicKeyAlgorithm != UnknownPublicKeyAlgorithm {
+		cert.PublicKey, err = parsePublicKey(&publicKeyInfo{
+			Algorithm: pkAI,
+			PublicKey: spk,
+		})
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if cert.Version > 1 {
@@ -954,7 +1063,7 @@ func parseCertificate(der []byte) (*Certificate, error) {
 					}
 					oidStr := ext.Id.String()
 					if seenExts[oidStr] {
-						return nil, errors.New("x509: certificate contains duplicate extensions")
+						return nil, fmt.Errorf("x509: certificate contains duplicate extension with OID %q", oidStr)
 					}
 					seenExts[oidStr] = true
 					cert.Extensions = append(cert.Extensions, ext)
@@ -977,6 +1086,10 @@ func parseCertificate(der []byte) (*Certificate, error) {
 }
 
 // ParseCertificate parses a single certificate from the given ASN.1 DER data.
+//
+// Before Go 1.23, ParseCertificate accepted certificates with negative serial
+// numbers. This behavior can be restored by including "x509negativeserial=1" in
+// the GODEBUG environment variable.
 func ParseCertificate(der []byte) (*Certificate, error) {
 	cert, err := parseCertificate(der)
 	if err != nil {
@@ -1007,7 +1120,7 @@ func ParseCertificates(der []byte) ([]*Certificate, error) {
 // the actual encoded version, so the version for X.509v2 is 1.
 const x509v2Version = 1
 
-// ParseRevocationList parses a X509 v2 Certificate Revocation List from the given
+// ParseRevocationList parses a X509 v2 [Certificate] Revocation List from the given
 // ASN.1 DER data.
 func ParseRevocationList(der []byte) (*RevocationList, error) {
 	rl := &RevocationList{}
@@ -1100,16 +1213,22 @@ func ParseRevocationList(der []byte) (*RevocationList, error) {
 			return nil, errors.New("x509: malformed crl")
 		}
 		for !revokedSeq.Empty() {
+			rce := RevocationListEntry{}
+
 			var certSeq cryptobyte.String
-			if !revokedSeq.ReadASN1(&certSeq, cryptobyte_asn1.SEQUENCE) {
+			if !revokedSeq.ReadASN1Element(&certSeq, cryptobyte_asn1.SEQUENCE) {
 				return nil, errors.New("x509: malformed crl")
 			}
-			rc := pkix.RevokedCertificate{}
-			rc.SerialNumber = new(big.Int)
-			if !certSeq.ReadASN1Integer(rc.SerialNumber) {
+			rce.Raw = certSeq
+			if !certSeq.ReadASN1(&certSeq, cryptobyte_asn1.SEQUENCE) {
+				return nil, errors.New("x509: malformed crl")
+			}
+
+			rce.SerialNumber = new(big.Int)
+			if !certSeq.ReadASN1Integer(rce.SerialNumber) {
 				return nil, errors.New("x509: malformed serial number")
 			}
-			rc.RevocationTime, err = parseTime(&certSeq)
+			rce.RevocationTime, err = parseTime(&certSeq)
 			if err != nil {
 				return nil, err
 			}
@@ -1128,11 +1247,23 @@ func ParseRevocationList(der []byte) (*RevocationList, error) {
 					if err != nil {
 						return nil, err
 					}
-					rc.Extensions = append(rc.Extensions, ext)
+					if ext.Id.Equal(oidExtensionReasonCode) {
+						val := cryptobyte.String(ext.Value)
+						if !val.ReadASN1Enum(&rce.ReasonCode) {
+							return nil, fmt.Errorf("x509: malformed reasonCode extension")
+						}
+					}
+					rce.Extensions = append(rce.Extensions, ext)
 				}
 			}
 
-			rl.RevokedCertificates = append(rl.RevokedCertificates, rc)
+			rl.RevokedCertificateEntries = append(rl.RevokedCertificateEntries, rce)
+			rcDeprecated := pkix.RevokedCertificate{
+				SerialNumber:   rce.SerialNumber,
+				RevocationTime: rce.RevocationTime,
+				Extensions:     rce.Extensions,
+			}
+			rl.RevokedCertificates = append(rl.RevokedCertificates, rcDeprecated)
 		}
 	}
 
@@ -1155,7 +1286,10 @@ func ParseRevocationList(der []byte) (*RevocationList, error) {
 				return nil, err
 			}
 			if ext.Id.Equal(oidExtensionAuthorityKeyId) {
-				rl.AuthorityKeyId = ext.Value
+				rl.AuthorityKeyId, err = parseAuthorityKeyIdentifier(ext)
+				if err != nil {
+					return nil, err
+				}
 			} else if ext.Id.Equal(oidExtensionCRLNumber) {
 				value := cryptobyte.String(ext.Value)
 				rl.Number = new(big.Int)
@@ -1169,3 +1303,196 @@ func ParseRevocationList(der []byte) (*RevocationList, error) {
 
 	return rl, nil
 }
+
+// Modify ------------------------------------------------------------------
+// domainToReverseLabels converts a textual domain name like foo.example.com to
+// the list of labels in reverse order, e.g. ["com", "example", "foo"].
+func domainToReverseLabels(domain string) (reverseLabels []string, ok bool) {
+	for len(domain) > 0 {
+		if i := strings.LastIndexByte(domain, '.'); i == -1 {
+			reverseLabels = append(reverseLabels, domain)
+			domain = ""
+		} else {
+			reverseLabels = append(reverseLabels, domain[i+1:])
+			domain = domain[:i]
+			if i == 0 { // domain == ""
+				// domain is prefixed with an empty label, append an empty
+				// string to reverseLabels to indicate this.
+				reverseLabels = append(reverseLabels, "")
+			}
+		}
+	}
+
+	if len(reverseLabels) > 0 && len(reverseLabels[0]) == 0 {
+		// An empty label at the end indicates an absolute value.
+		return nil, false
+	}
+
+	for _, label := range reverseLabels {
+		if len(label) == 0 {
+			// Empty labels are otherwise invalid.
+			return nil, false
+		}
+
+		for _, c := range label {
+			if c < 33 || c > 126 {
+				// Invalid character.
+				return nil, false
+			}
+		}
+	}
+
+	return reverseLabels, true
+}
+
+// Modify ------------------------------------------------------------------
+
+// Modify ------------------------------------------------------------------
+// rfc2821Mailbox represents a “mailbox” (which is an email address to most
+// people) by breaking it into the “local” (i.e. before the '@') and “domain”
+// parts.
+type rfc2821Mailbox struct {
+	local, domain string
+}
+
+// parseRFC2821Mailbox parses an email address into local and domain parts,
+// based on the ABNF for a “Mailbox” from RFC 2821. According to RFC 5280,
+// Section 4.2.1.6 that's correct for an rfc822Name from a certificate: “The
+// format of an rfc822Name is a "Mailbox" as defined in RFC 2821, Section 4.1.2”.
+func parseRFC2821Mailbox(in string) (mailbox rfc2821Mailbox, ok bool) {
+	if len(in) == 0 {
+		return mailbox, false
+	}
+
+	localPartBytes := make([]byte, 0, len(in)/2)
+
+	if in[0] == '"' {
+		// Quoted-string = DQUOTE *qcontent DQUOTE
+		// non-whitespace-control = %d1-8 / %d11 / %d12 / %d14-31 / %d127
+		// qcontent = qtext / quoted-pair
+		// qtext = non-whitespace-control /
+		//         %d33 / %d35-91 / %d93-126
+		// quoted-pair = ("\" text) / obs-qp
+		// text = %d1-9 / %d11 / %d12 / %d14-127 / obs-text
+		//
+		// (Names beginning with “obs-” are the obsolete syntax from RFC 2822,
+		// Section 4. Since it has been 16 years, we no longer accept that.)
+		in = in[1:]
+	QuotedString:
+		for {
+			if len(in) == 0 {
+				return mailbox, false
+			}
+			c := in[0]
+			in = in[1:]
+
+			switch {
+			case c == '"':
+				break QuotedString
+
+			case c == '\\':
+				// quoted-pair
+				if len(in) == 0 {
+					return mailbox, false
+				}
+				if in[0] == 11 ||
+					in[0] == 12 ||
+					(1 <= in[0] && in[0] <= 9) ||
+					(14 <= in[0] && in[0] <= 127) {
+					localPartBytes = append(localPartBytes, in[0])
+					in = in[1:]
+				} else {
+					return mailbox, false
+				}
+
+			case c == 11 ||
+				c == 12 ||
+				// Space (char 32) is not allowed based on the
+				// BNF, but RFC 3696 gives an example that
+				// assumes that it is. Several “verified”
+				// errata continue to argue about this point.
+				// We choose to accept it.
+				c == 32 ||
+				c == 33 ||
+				c == 127 ||
+				(1 <= c && c <= 8) ||
+				(14 <= c && c <= 31) ||
+				(35 <= c && c <= 91) ||
+				(93 <= c && c <= 126):
+				// qtext
+				localPartBytes = append(localPartBytes, c)
+
+			default:
+				return mailbox, false
+			}
+		}
+	} else {
+		// Atom ("." Atom)*
+	NextChar:
+		for len(in) > 0 {
+			// atext from RFC 2822, Section 3.2.4
+			c := in[0]
+
+			switch {
+			case c == '\\':
+				// Examples given in RFC 3696 suggest that
+				// escaped characters can appear outside of a
+				// quoted string. Several “verified” errata
+				// continue to argue the point. We choose to
+				// accept it.
+				in = in[1:]
+				if len(in) == 0 {
+					return mailbox, false
+				}
+				fallthrough
+
+			case ('0' <= c && c <= '9') ||
+				('a' <= c && c <= 'z') ||
+				('A' <= c && c <= 'Z') ||
+				c == '!' || c == '#' || c == '$' || c == '%' ||
+				c == '&' || c == '\'' || c == '*' || c == '+' ||
+				c == '-' || c == '/' || c == '=' || c == '?' ||
+				c == '^' || c == '_' || c == '`' || c == '{' ||
+				c == '|' || c == '}' || c == '~' || c == '.':
+				localPartBytes = append(localPartBytes, in[0])
+				in = in[1:]
+
+			default:
+				break NextChar
+			}
+		}
+
+		if len(localPartBytes) == 0 {
+			return mailbox, false
+		}
+
+		// From RFC 3696, Section 3:
+		// “period (".") may also appear, but may not be used to start
+		// or end the local part, nor may two or more consecutive
+		// periods appear.”
+		twoDots := []byte{'.', '.'}
+		if localPartBytes[0] == '.' ||
+			localPartBytes[len(localPartBytes)-1] == '.' ||
+			bytes.Contains(localPartBytes, twoDots) {
+			return mailbox, false
+		}
+	}
+
+	if len(in) == 0 || in[0] != '@' {
+		return mailbox, false
+	}
+	in = in[1:]
+
+	// The RFC species a format for domains, but that's known to be
+	// violated in practice so we accept that anything after an '@' is the
+	// domain part.
+	if _, ok := domainToReverseLabels(in); !ok {
+		return mailbox, false
+	}
+
+	mailbox.local = string(localPartBytes)
+	mailbox.domain = in
+	return mailbox, true
+}
+
+// Modify ------------------------------------------------------------------

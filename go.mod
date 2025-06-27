@@ -1,6 +1,6 @@
 module github.com/liuxinfeng96/bc-crypto
 
-go 1.19
+go 1.24
 
 require (
 	github.com/ethereum/go-ethereum v1.9.16

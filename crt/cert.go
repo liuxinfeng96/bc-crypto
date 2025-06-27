@@ -12,7 +12,7 @@ import (
 	"net"
 	"time"
 
-	bcecdsa "github.com/liuxinfeng96/bc-crypto/ecdsa"
+	"github.com/liuxinfeng96/bc-crypto/asym"
 	bcx509 "github.com/liuxinfeng96/bc-crypto/x509"
 	"github.com/tjfoc/gmsm/sm2"
 )
@@ -36,9 +36,45 @@ type CertificateReq struct {
 	CaKeyBytes  []byte
 }
 
+func ComputeSKI(pub interface{}) ([]byte, error) {
+
+	publicKeyBytes, err := asym.MarshalPublicKey(pub)
+	if err != nil {
+		return nil, err
+	}
+
+	hash := crypto.SHA1.HashFunc().New()
+
+	hash.Write(publicKeyBytes)
+
+	pubHash := hash.Sum(nil)
+
+	return pubHash[:], nil
+}
+
+func ParseCertificateFromPEM(certBytes []byte) (*bcx509.Certificate, error) {
+	var (
+		cert *bcx509.Certificate
+		err  error
+	)
+
+	block, rest := pem.Decode(certBytes)
+	if block == nil {
+		cert, err = bcx509.ParseCertificate(rest)
+	} else {
+		cert, err = bcx509.ParseCertificate(block.Bytes)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return cert, nil
+}
+
 func CreateCSR(req *CsrReq) ([]byte, error) {
 
-	sk, err := bcx509.ParsePrivateKey(req.PrivateKeyBytes)
+	sk, err := asym.ParsePrivateKey(req.PrivateKeyBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +135,7 @@ func CreateCertificate(req *CertificateReq) ([]byte, error) {
 		return nil, err
 	}
 
-	caKey, err := bcx509.ParsePrivateKey(req.CaKeyBytes)
+	caKey, err := asym.ParsePrivateKey(req.CaKeyBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -127,28 +163,41 @@ func CreateCertificate(req *CertificateReq) ([]byte, error) {
 		PublicKey:             csr.PublicKey,
 	}
 
-	template.SubjectKeyId, err = bcx509.ComputeSKI(csr.PublicKey)
+	template.SubjectKeyId, err = ComputeSKI(csr.PublicKey)
 	if err != nil {
 		return nil, err
 	}
 
-	caCert, err := bcx509.ParseCertificateFromPEM(req.CaCertBytes)
-	if err != nil {
-		return nil, err
-	}
+	parent := new(bcx509.Certificate)
 
-	template.Issuer = caCert.Subject
+	if req.CaCertBytes != nil {
 
-	if caCert.SubjectKeyId != nil {
-		template.AuthorityKeyId = caCert.SubjectKeyId
-	} else {
-		template.AuthorityKeyId, err = bcx509.ComputeSKI(caCert.PublicKey)
+		caCert, err := ParseCertificateFromPEM(req.CaCertBytes)
 		if err != nil {
 			return nil, err
 		}
+
+		template.Issuer = caCert.Subject
+
+		if caCert.SubjectKeyId != nil {
+			template.AuthorityKeyId = caCert.SubjectKeyId
+		} else {
+			template.AuthorityKeyId, err = ComputeSKI(caCert.PublicKey)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		parent = caCert
+
+	} else {
+		// 自签
+		template.Issuer = template.Subject
+		template.AuthorityKeyId = template.SubjectKeyId
+		parent = template
 	}
 
-	certDER, err := bcx509.CreateCertificate(rand.Reader, template, caCert,
+	certDER, err := bcx509.CreateCertificate(rand.Reader, template, parent,
 		csr.PublicKey, caKey)
 	if err != nil {
 		return nil, err
@@ -168,9 +217,7 @@ func getSignatureAlgorithm(key crypto.PrivateKey) (bcx509.SignatureAlgorithm, er
 	var signatureAlgorithm bcx509.SignatureAlgorithm
 	switch skey.Public().(type) {
 	case *ecdsa.PublicKey:
-		signatureAlgorithm = bcx509.ECDSAWithSHA256
-	case *bcecdsa.PublicKey:
-		pk := skey.Public().(*bcecdsa.PublicKey)
+		pk := skey.Public().(*ecdsa.PublicKey)
 		switch pk.Curve {
 		case sm2.P256Sm2():
 			signatureAlgorithm = bcx509.SM2WithSM3

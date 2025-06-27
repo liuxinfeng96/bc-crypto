@@ -2,9 +2,12 @@ package crt
 
 import (
 	"encoding/base64"
+	"fmt"
+	"os"
 	"testing"
 	"time"
 
+	"github.com/liuxinfeng96/bc-crypto/asym"
 	"github.com/test-go/testify/require"
 )
 
@@ -15,7 +18,7 @@ func TestCreateCSR(t *testing.T) {
 	signKeyPem, err := base64.StdEncoding.DecodeString(keyStr)
 	require.Nil(t, err)
 
-	println(string(signKeyPem))
+	fmt.Println(string(signKeyPem))
 	// 申请CSR
 	csrBytes, err := CreateCSR(&CsrReq{
 		Country:            "CN",
@@ -28,7 +31,7 @@ func TestCreateCSR(t *testing.T) {
 	})
 	require.Nil(t, err)
 
-	println(string(csrBytes))
+	fmt.Println(string(csrBytes))
 }
 
 func TestCreateCert(t *testing.T) {
@@ -68,5 +71,153 @@ func TestCreateCert(t *testing.T) {
 	})
 	require.Nil(t, err)
 
-	println(string(userCertBytes))
+	fmt.Println(string(userCertBytes))
+}
+
+func TestCreateSecp256k1KeyCert(t *testing.T) {
+	signSk, err := asym.GenerateKey(asym.EC_Secp256k1)
+	require.Nil(t, err)
+
+	signKeyPem, err := asym.MarshalPrivateKey(signSk)
+	require.Nil(t, err)
+
+	// 申请CSR
+	csrBytes, err := CreateCSR(&CsrReq{
+		Country:            "CN",
+		Locality:           "ShanDong",
+		Province:           "QingDao",
+		OrganizationalUnit: "client",
+		Organization:       "lcago.cer.org",
+		CommonName:         "202507201" + ".sign",
+		PrivateKeyBytes:    signKeyPem,
+	})
+	require.Nil(t, err)
+
+	// 自签生成证书
+	userCertBytes, err := CreateCertificate(&CertificateReq{
+		IsCA:        true,
+		ValidTime:   time.Hour * 24 * 365 * 100, // 100年
+		CsrBytes:    csrBytes,
+		CaCertBytes: nil,
+		CaKeyBytes:  signKeyPem,
+	})
+	require.Nil(t, err)
+
+	fmt.Println(string(userCertBytes))
+
+	err = os.WriteFile("./test.crt", userCertBytes, 0777)
+	require.Nil(t, err)
+
+	cert, err := ParseCertificateFromPEM(userCertBytes)
+	require.Nil(t, err)
+
+	fmt.Printf("%+v", cert)
+
+}
+
+func TestCreateSm2Cert(t *testing.T) {
+	caKey, err := asym.GenerateKey(asym.EC_SM2)
+	require.Nil(t, err)
+
+	caKeyPem, err := asym.MarshalPrivateKey(caKey)
+	require.Nil(t, err)
+
+	// 申请CSR
+	csrBytes, err := CreateCSR(&CsrReq{
+		Country:            "CN",
+		Locality:           "BeiJing",
+		Province:           "BeiJing",
+		OrganizationalUnit: "ca",
+		Organization:       "lcago.cer.org",
+		CommonName:         "202507201" + ".sign",
+		PrivateKeyBytes:    caKeyPem,
+	})
+	require.Nil(t, err)
+
+	// 自签生成证书
+	caCertBytes, err := CreateCertificate(&CertificateReq{
+		IsCA:        true,
+		ValidTime:   time.Hour * 24 * 365 * 100, // 100年
+		CsrBytes:    csrBytes,
+		CaCertBytes: nil,
+		CaKeyBytes:  caKeyPem,
+	})
+	require.Nil(t, err)
+
+	signKey, err := asym.GenerateKey(asym.EC_SM2)
+	require.Nil(t, err)
+
+	signKeyPem, err := asym.MarshalPrivateKey(signKey)
+	require.Nil(t, err)
+
+	// 申请CSR
+	userCsrBytes, err := CreateCSR(&CsrReq{
+		Country:            "CN",
+		Locality:           "ShanDong",
+		Province:           "QingDao",
+		OrganizationalUnit: "client",
+		Organization:       "lcago.cer.org",
+		CommonName:         "202507206" + ".sign",
+		PrivateKeyBytes:    signKeyPem,
+	})
+	require.Nil(t, err)
+
+	userCertBytes, err := CreateCertificate(&CertificateReq{
+		IsCA:        false,
+		ValidTime:   time.Hour * 24 * 365 * 100, // 100年
+		CsrBytes:    userCsrBytes,
+		CaCertBytes: caCertBytes,
+		CaKeyBytes:  caKeyPem,
+	})
+
+	require.Nil(t, err)
+
+	fmt.Println(string(userCertBytes))
+
+	err = os.WriteFile("./test.crt", userCertBytes, 0777)
+	require.Nil(t, err)
+
+	_, err = ParseCertificateFromPEM(userCertBytes)
+	require.Nil(t, err)
+}
+
+func TestCreateRSACert(t *testing.T) {
+	signSk, err := asym.GenerateKey(asym.RSA2048)
+	require.Nil(t, err)
+
+	signKeyPem, err := asym.MarshalPrivateKey(signSk)
+	require.Nil(t, err)
+
+	// 申请CSR
+	csrBytes, err := CreateCSR(&CsrReq{
+		Country:            "CN",
+		Locality:           "ShanDong",
+		Province:           "QingDao",
+		OrganizationalUnit: "client",
+		Organization:       "lcago.cer.org",
+		CommonName:         "202507201" + ".sign",
+		PrivateKeyBytes:    signKeyPem,
+	})
+	require.Nil(t, err)
+
+	// 自签生成证书
+	userCertBytes, err := CreateCertificate(&CertificateReq{
+		IsCA:        true,
+		ValidTime:   time.Hour * 24 * 365 * 100, // 100年
+		CsrBytes:    csrBytes,
+		CaCertBytes: nil,
+		CaKeyBytes:  signKeyPem,
+	})
+	require.Nil(t, err)
+
+	fmt.Println(string(userCertBytes))
+
+	err = os.WriteFile("./test.crt", userCertBytes, 0777)
+	require.Nil(t, err)
+
+	cert, err := ParseCertificateFromPEM(userCertBytes)
+	require.Nil(t, err)
+
+	fmt.Printf("%+v", cert)
+
 }
