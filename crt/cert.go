@@ -29,12 +29,22 @@ type CsrReq struct {
 }
 
 type CertificateReq struct {
-	IsCA        bool
-	ValidTime   time.Duration
-	CsrBytes    []byte
-	CaCertBytes []byte
-	CaKeyBytes  []byte
+	IsCA          bool
+	ValidTime     time.Duration
+	CsrBytes      []byte
+	CaCertBytes   []byte
+	CaKeyBytes    []byte
+	CertUsageType CertUsageType
 }
+
+type CertUsageType uint32
+
+const (
+	SIGN CertUsageType = iota + 1
+	TLS
+	TLS_SIGN
+	TLS_ENC
+)
 
 func ComputeSKI(pub interface{}) ([]byte, error) {
 
@@ -126,7 +136,10 @@ func CreateCertificate(req *CertificateReq) ([]byte, error) {
 		basicConstraintsValid = true
 	}
 
-	keyUsage, extKeyUsage := getKeyUsageAndExtKeyUsage(req.IsCA)
+	keyUsage, extKeyUsage, err := getKeyUsageAndExtKeyUsage(req.IsCA, req.CertUsageType)
+	if err != nil {
+		return nil, nil
+	}
 
 	notBefore := time.Now().UTC()
 
@@ -252,7 +265,8 @@ func dealSANS(sans []string) ([]string, []net.IP) {
 	return dnsName, ipAddrs
 }
 
-func getKeyUsageAndExtKeyUsage(isCa bool) (bcx509.KeyUsage, []bcx509.ExtKeyUsage) {
+func getKeyUsageAndExtKeyUsage(isCa bool,
+	certUsage CertUsageType) (bcx509.KeyUsage, []bcx509.ExtKeyUsage, error) {
 	var (
 		keyUsage    bcx509.KeyUsage
 		extKeyUsage []bcx509.ExtKeyUsage
@@ -260,9 +274,22 @@ func getKeyUsageAndExtKeyUsage(isCa bool) (bcx509.KeyUsage, []bcx509.ExtKeyUsage
 	if isCa {
 		keyUsage = bcx509.KeyUsageCRLSign | bcx509.KeyUsageCertSign
 	} else {
-		keyUsage = bcx509.KeyUsageKeyEncipherment | bcx509.KeyUsageDataEncipherment | bcx509.KeyUsageKeyAgreement |
-			bcx509.KeyUsageDigitalSignature | bcx509.KeyUsageContentCommitment
+		switch certUsage {
+		case TLS_ENC:
+			keyUsage = bcx509.KeyUsageKeyEncipherment | bcx509.KeyUsageDataEncipherment | bcx509.KeyUsageKeyAgreement
+		case TLS_SIGN:
+			keyUsage = bcx509.KeyUsageDigitalSignature | bcx509.KeyUsageContentCommitment
+		case SIGN:
+			keyUsage = bcx509.KeyUsageDigitalSignature | bcx509.KeyUsageContentCommitment
+		case TLS:
+			keyUsage = bcx509.KeyUsageKeyEncipherment | bcx509.KeyUsageDataEncipherment | bcx509.KeyUsageKeyAgreement |
+				bcx509.KeyUsageDigitalSignature | bcx509.KeyUsageContentCommitment
+		default:
+			return 0, nil, errors.New("the cert usage type is unknown")
+		}
+
 		extKeyUsage = []bcx509.ExtKeyUsage{bcx509.ExtKeyUsageClientAuth, bcx509.ExtKeyUsageServerAuth}
 	}
-	return keyUsage, extKeyUsage
+
+	return keyUsage, extKeyUsage, nil
 }
