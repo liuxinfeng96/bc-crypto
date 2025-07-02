@@ -55,6 +55,10 @@ func ParsePrivateKeyFromDER(der []byte) (crypto.PrivateKey, error) {
 		return key, nil
 	}
 
+	if key, err := bcx509.ParseECPrivateKey(der); err == nil {
+		return key, nil
+	}
+
 	if key, err := smx509.ParsePKCS8UnecryptedPrivateKey(der); err == nil {
 		return key, nil
 	}
