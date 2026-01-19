@@ -138,7 +138,7 @@ func CreateCertificate(req *CertificateReq) ([]byte, error) {
 
 	keyUsage, extKeyUsage, err := getKeyUsageAndExtKeyUsage(req.IsCA, req.CertUsageType)
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 
 	notBefore := time.Now().UTC()

@@ -63,11 +63,12 @@ func TestCreateCert(t *testing.T) {
 
 	// 生成证书
 	userCertBytes, err := CreateCertificate(&CertificateReq{
-		IsCA:        false,
-		ValidTime:   time.Hour * 24 * 365 * 100, // 100年
-		CsrBytes:    csrBytes,
-		CaCertBytes: caCertPem,
-		CaKeyBytes:  caKeyPem,
+		IsCA:          false,
+		ValidTime:     time.Hour * 24 * 365 * 100, // 100年
+		CsrBytes:      csrBytes,
+		CaCertBytes:   caCertPem,
+		CaKeyBytes:    caKeyPem,
+		CertUsageType: SIGN,
 	})
 	require.Nil(t, err)
 
@@ -95,11 +96,12 @@ func TestCreateSecp256k1KeyCert(t *testing.T) {
 
 	// 自签生成证书
 	userCertBytes, err := CreateCertificate(&CertificateReq{
-		IsCA:        true,
-		ValidTime:   time.Hour * 24 * 365 * 100, // 100年
-		CsrBytes:    csrBytes,
-		CaCertBytes: nil,
-		CaKeyBytes:  signKeyPem,
+		IsCA:          true,
+		ValidTime:     time.Hour * 24 * 365 * 100, // 100年
+		CsrBytes:      csrBytes,
+		CaCertBytes:   nil,
+		CaKeyBytes:    signKeyPem,
+		CertUsageType: SIGN,
 	})
 	require.Nil(t, err)
 
@@ -136,11 +138,12 @@ func TestCreateSm2Cert(t *testing.T) {
 
 	// 自签生成证书
 	caCertBytes, err := CreateCertificate(&CertificateReq{
-		IsCA:        true,
-		ValidTime:   time.Hour * 24 * 365 * 100, // 100年
-		CsrBytes:    csrBytes,
-		CaCertBytes: nil,
-		CaKeyBytes:  caKeyPem,
+		IsCA:          true,
+		ValidTime:     time.Hour * 24 * 365 * 100, // 100年
+		CsrBytes:      csrBytes,
+		CaCertBytes:   nil,
+		CaKeyBytes:    caKeyPem,
+		CertUsageType: TLS,
 	})
 	require.Nil(t, err)
 
@@ -163,11 +166,12 @@ func TestCreateSm2Cert(t *testing.T) {
 	require.Nil(t, err)
 
 	userCertBytes, err := CreateCertificate(&CertificateReq{
-		IsCA:        false,
-		ValidTime:   time.Hour * 24 * 365 * 100, // 100年
-		CsrBytes:    userCsrBytes,
-		CaCertBytes: caCertBytes,
-		CaKeyBytes:  caKeyPem,
+		IsCA:          false,
+		ValidTime:     time.Hour * 24 * 365 * 100, // 100年
+		CsrBytes:      userCsrBytes,
+		CaCertBytes:   caCertBytes,
+		CaKeyBytes:    caKeyPem,
+		CertUsageType: TLS,
 	})
 
 	require.Nil(t, err)
@@ -202,11 +206,12 @@ func TestCreateRSACert(t *testing.T) {
 
 	// 自签生成证书
 	userCertBytes, err := CreateCertificate(&CertificateReq{
-		IsCA:        true,
-		ValidTime:   time.Hour * 24 * 365 * 100, // 100年
-		CsrBytes:    csrBytes,
-		CaCertBytes: nil,
-		CaKeyBytes:  signKeyPem,
+		IsCA:          true,
+		ValidTime:     time.Hour * 24 * 365 * 100, // 100年
+		CsrBytes:      csrBytes,
+		CaCertBytes:   nil,
+		CaKeyBytes:    signKeyPem,
+		CertUsageType: TLS,
 	})
 	require.Nil(t, err)
 
